@@ -107,9 +107,19 @@ const POINTS = ['north', 'north-northeast', 'northeast', 'east-northeast', 'east
   'north-northwest'];
 export const compass = (deg) => POINTS[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16];
 
-// A rough flight time in minutes: a typical airliner's 850 km/h cruise, plus half an hour
-// for taxi, climb and descent. Under 200 km nobody flies, so there is none.
-export function flightMin(km) { return km < 200 ? null : Math.round((km / 850 * 60 + 30) / 5) * 5; }
+// A scheduled flight time in minutes, gate to gate, fitted to the median scheduled time of
+// 5,955 US routes (BTS, August 2025; projects/flight-time): 45 minutes for taxi, climb and
+// descent, then 820 km/h for the first 4,000 km and 900 km/h after, as long-haul jets cruise
+// faster. In the westerly belts (25-60 degrees, either hemisphere) the wind takes 3.7 minutes
+// per 1,000 km off flying east and adds it flying west, scaled by how much of the leg runs
+// east-west and by how many of its two ends lie in a belt. Under 200 km nobody flies: null.
+export const beltShare = (lat) => (Math.abs(lat) >= 25 && Math.abs(lat) <= 60 ? 0.5 : 0);
+export function flightMin(km, bearing = 0, latA = 0, latB = 0) {
+  if (km < 200) return null;
+  const cruise = (Math.min(km, 4000) / 820 + Math.max(0, km - 4000) / 900) * 60;
+  const wind = 0.0037 * km * Math.sin(bearing * RAD) * (beltShare(latA) + beltShare(latB));
+  return Math.round((45 + cruise - wind) / 5) * 5;
+}
 
 // ---- words ---------------------------------------------------------------------------
 

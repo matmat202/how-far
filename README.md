@@ -23,7 +23,7 @@ has not, so London is 7 hours ahead of California instead of 8.
   Vincenty does not converge; there the page uses a sphere, which is within 0.5%, and says so.
 - **Route and halfway point:** the great circle on a sphere. At map scale the ellipsoid
   makes no visible difference.
-- **Flight time:** a rule of thumb, 850 km/h plus half an hour. It is not a schedule.
+- **Flight time:** fitted to the median scheduled time of every US domestic route in BTS's August 2025 data (5,955 routes): 45 min, 820 km/h (900 past 4,000 km), and the westerlies between 25° and 60° make eastbound quicker. Median miss 5 min; off by 30+ on 0.5% of routes (the old 850 km/h + 30 min rule: 18 min and 15%). Outside the US it is spot-checked only (LAX–Sydney, Singapore–Newark, New York–London, SFO–Tokyo).
 - **Time zones:** your browser's own time-zone rules, which come from the IANA database.
 
 Towns: [GeoNames](https://www.geonames.org/) cities15000 (CC BY 4.0), every place of 15,000+

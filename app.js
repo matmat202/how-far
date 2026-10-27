@@ -59,6 +59,7 @@ function draw() {
     $('km').textContent = '0 km';
     $('mi').textContent = 'That is the same town twice. Pick a second one.';
     for (const id of ['heading', 'fly', 'half']) $(id).textContent = '–';
+    $('flySub').textContent = 'a scheduled flight';
     $('headingSub').textContent = 'to set off in';
     drawMap(a, b);
     $('midNote').textContent = '';
@@ -70,8 +71,10 @@ function draw() {
   $('mi').textContent = `${d.mi}${m.exact ? '' : ' · nearly opposite sides of the Earth, so measured on a sphere (within 0.5%)'}`;
   $('heading').textContent = L.compass(m.bearing);
   $('headingSub').textContent = `${Math.round(m.bearing) % 360}° as you leave ${L.short(a.label)}`;
-  const f = L.flightMin(m.km);
+  const f = L.flightMin(m.km, m.bearing, a.lat, b.lat), back = L.flightMin(m.km, L.measure(b, a).bearing, b.lat, a.lat);
   $('fly').textContent = f == null ? 'too close' : `${L.hm(f)}`;
+  $('flySub').textContent = f == null ? 'to fly' : back - f >= 15 ? `scheduled, nonstop · ${L.hm(back)} coming back, against the wind`
+    : f - back >= 15 ? `scheduled, nonstop, into the wind · ${L.hm(back)} coming back` : 'scheduled, nonstop';
   $('half').textContent = `${L.ofHalf(m.km)}%`;
   const mid = drawMap(a, b);
   const n = L.nearest(PLACES, mid);

@@ -80,8 +80,33 @@ near('nearest says how far', L.nearest(tiny, pt(10.5, 10)).km, 0, 1e-9);
 // --- words ------------------------------------------------------------------------------
 eq('compass points', [0, 11.2, 11.3, 90, 303.58, 359, -10, 180].map(L.compass),
   ['north', 'north', 'north-northeast', 'east', 'west-northwest', 'north', 'north', 'south']);
-eq('flight times', [L.flightMin(150), L.flightMin(199.9), L.flightMin(200), L.flightMin(8330.2), L.flightMin(5585)],
-  [null, null, 45, 620, 425]);
+eq('flight times', [L.flightMin(150), L.flightMin(199.9), L.flightMin(200), L.flightMin(4000), L.flightMin(8330.2)],
+  [null, null, 60, 340, 625]);
+eq('the wind: east is quicker in the belt, either hemisphere, and not in the tropics',
+  [L.flightMin(4000, 90, 40, 40), L.flightMin(4000, 270, 40, 40), L.flightMin(4000, 90, -40, -40), L.flightMin(4000, 90, 10, 10), L.flightMin(4000, 90, 10, 40)],
+  [325, 350, 325, 340, 330]);
+eq('no wind flying due north', L.flightMin(4000, 0, 40, 40), 340);
+
+// --- against the timetable: every US route BTS scheduled in August 2025 -----------------
+// test/flights.json is the median scheduled gate-to-gate time of each route (see its source).
+const fl = JSON.parse(readFileSync(here(existsSync(here('../test/flights.json')) ? '../test/flights.json' : 'test/flights.json'), 'utf8'));
+const legs = fl.routes.map(([o, d, sched]) => {
+  const a = pt(...fl.airports[o]), b = pt(...fl.airports[d]), m = L.measure(a, b);
+  return { o, d, km: m.km, east: Math.sin(m.bearing * Math.PI / 180), err: L.flightMin(m.km, m.bearing, a.lat, b.lat) - sched };
+});
+const median = (xs) => { const v = [...xs].sort((x, y) => x - y), h = v.length >> 1; return v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2; };
+const share = (xs, f) => xs.filter(f).length / xs.length;
+ok('5,955 routes to check', legs.length === 5955, String(legs.length));
+near('no bias: median error', median(legs.map((l) => l.err)), 0, 3);
+near('typical miss: median |error|', median(legs.map((l) => Math.abs(l.err))), 5, 2);
+ok('off by 30+ minutes on under 2% of routes', share(legs, (l) => Math.abs(l.err) >= 30) < 0.02, String(share(legs, (l) => Math.abs(l.err) >= 30)));
+for (const [name, f] of [['long hauls, 4,000 km+', (l) => l.km >= 4000], ['eastbound, 2,500 km+', (l) => l.km >= 2500 && l.east > 0.7],
+  ['westbound, 2,500 km+', (l) => l.km >= 2500 && l.east < -0.7], ['short hops, under 500 km', (l) => l.km < 500]]) {
+  near(`no bias: ${name}`, median(legs.filter(f).map((l) => l.err)), 0, 5);
+}
+const leg = (o, d) => legs.find((l) => l.o === o && l.d === d);
+near('SFO to New York JFK', leg('SFO', 'JFK').err, 0, 15);
+near('New York JFK to SFO, the long way round the wind', leg('JFK', 'SFO').err, 0, 30);
 eq('distances', [L.dist(8330.2213), L.dist(3.14), L.dist(0)], [{ km: '8,330 km', mi: '5,176 mi' }, { km: '3.1 km', mi: '2.0 mi' }, { km: '0.0 km', mi: '0.0 mi' }]);
 eq('hours and minutes', [L.hm(960), L.hm(345), L.hm(30), L.hm(-420), L.hm(1440)], ['16 h', '5 h 45 min', '30 min', '7 h', '24 h']);
 eq('coordinates', L.coord(pt(48.5526, -171.97517)), '48.6° N, 172.0° W');

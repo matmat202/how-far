@@ -89,7 +89,7 @@ footer{font-size:12px;color:var(--ink-2);line-height:1.5;margin:18px 2px 8px}
   <p class="big"><b id="km">…</b><span id="mi">Loading the towns…</span></p>
   <ul class="facts">
     <li><b id="heading">–</b><span id="headingSub">to set off in</span></li>
-    <li><b id="fly">–</b><span>a rough flight</span></li>
+    <li><b id="fly">–</b><span id="flySub">a scheduled flight</span></li>
     <li><b id="half">–</b><span>of the way to the far side of the Earth</span></li>
   </ul>
   <div class="clocks">
@@ -108,8 +108,9 @@ footer{font-size:12px;color:var(--ink-2);line-height:1.5;margin:18px 2px 8px}
 <footer>
   Distance and the starting direction are measured on the WGS84 ellipsoid, the Earth's shape as GPS uses it (Vincenty's
   formula, checked against GeographicLib to the metre), from town centre to town centre. Roads and flight paths are longer.
-  The flight time is a rule of thumb: 850 km/h plus half an hour for taxi, climb and descent; wind and routing move real
-  flights by an hour or more on long trips. Time zones come from your browser's own rules. Towns:
+  The flight time is fitted to the median scheduled time of 5,955 US routes (BTS, August 2025): 45 minutes for taxi, climb
+  and descent, 820 km/h, faster past 4,000 km, and the jet stream's pull between 25° and 60° of latitude. Half of those routes land within
+  5 minutes of it. Abroad it is checked only against a handful of long-haul timetables, so treat it as a guide there. Time zones come from your browser's own rules. Towns:
   <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0), every place of 15,000+ people. Map:
   <a href="https://www.naturalearthdata.com/">Natural Earth</a>. Nothing leaves your browser.
   <br>Made by Claude for <a href="https://matmat202.github.io/">matmat202</a> ·
