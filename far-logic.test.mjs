@@ -17,7 +17,7 @@ const bearingGap = (x, y) => Math.abs(((x - y + 540) % 360) - 180);
 // --- geodesic constants (WGS84) --------------------------------------------------------
 near('a quarter of the equator', L.measure(pt(0, 0), pt(0, 90)).km, 10018.754171, 0.000001);
 near('equator to the pole', L.measure(pt(0, 0), pt(90, 0)).km, 10001.965729, 0.000001);
-eq('the same point is 0 km', L.measure(pt(37.44, -122.14), pt(37.44, -122.14)).km, 0);
+eq('the same point is 0 km, due north, and exact', L.measure(pt(37.44, -122.14), pt(37.44, -122.14)), { km: 0, bearing: 0, exact: true });
 near('due east along the equator', L.measure(pt(0, 10), pt(0, 20)).bearing, 90, 1e-9);
 near('due south down a meridian', L.measure(pt(40, 5), pt(-10, 5)).bearing, 180, 1e-9);
 near('sphere: a quarter circumference', L.sphere(pt(0, 0), pt(0, 90)).km, (Math.PI / 2) * L.R_KM, 1e-9);
@@ -35,8 +35,10 @@ for (const f of facts.pairs) {
   if (!a || !b) continue;
   const m = L.measure(a, b), s = L.sphere(a, b), tag = `${L.short(f.from)}-${L.short(f.to)}`;
   if (m.exact) {
-    near(`${tag}: km to the metre`, m.km, f.km, 0.001);
-    ok(`${tag}: bearing to 0.0001°`, bearingGap(m.bearing, f.bearing) < 1e-4, `${m.bearing} vs ${f.bearing}`);
+    // Vincenty is good to 0.5 mm (his 1975 paper) and measured 0.07 mm from GeographicLib on these
+    // pairs; at a metre's tolerance every one of its series constants could change unseen.
+    near(`${tag}: km to half a millimetre`, m.km, f.km, 5e-7);
+    ok(`${tag}: bearing to 1e-7°`, bearingGap(m.bearing, f.bearing) < 1e-7, `${m.bearing} vs ${f.bearing}`);
   } else {
     fellBack++;
     ok(`${tag}: sphere fallback within 0.5%`, Math.abs(m.km - f.km) / f.km < 0.005, `${m.km} vs ${f.km}`);
@@ -56,6 +58,14 @@ for (const f of facts.antipodes) {
   ok(`near-antipodes ${f.a}/${f.b}: says it fell back`, m.exact === false);
   ok(`near-antipodes ${f.a}/${f.b}: the sphere within 0.5%`, Math.abs(m.km - f.km) / f.km < 0.005, `${m.km} vs ${f.km}`);
 }
+
+for (const f of facts.long) {
+  const m = L.measure(pt(...f.a), pt(...f.b));
+  ok(`long ${f.a}/${f.b}: exact`, m.exact === true);
+  near(`long ${f.a}/${f.b}: km to half a millimetre`, m.km, f.km, 5e-7);
+  ok(`long ${f.a}/${f.b}: bearing to 1e-7°`, bearingGap(m.bearing, f.bearing) < 1e-7, `${m.bearing} vs ${f.bearing}`);
+}
+ok('a long pair to check', facts.long.length > 0);
 
 // --- the date line ----------------------------------------------------------------------
 const anc = pt(61.218, -149.9), tyo = pt(35.69, 139.69), lon = pt(51.509, -0.126), nyc = pt(40.714, -74.006);
@@ -132,6 +142,44 @@ eq('same zone, same time', L.diffWords(pa, sf, oct27), { min: 0, text: 'San Fran
 const apia = L.clock(oct27, 'Pacific/Apia'), pago = L.clock(oct27, 'Pacific/Pago_Pago');
 eq('the same clock on different days', [apia.time === pago.time, apia.day, pago.day], [true, 'Wed', 'Tue']);
 eq('a clock reading', L.clock(Date.UTC(2026, 9, 27, 16, 41), 'America/Los_Angeles'), { time: '9:41 AM', day: 'Tue' });
+
+// --- edges -----------------------------------------------------------------------------
+eq('the westerly belt is 25 to 60 degrees, both ends in', [24.9, 25, 60, 60.1, -25, -60].map(L.beltShare), [0, 0.5, 0.5, 0, 0.5, 0.5]);
+eq('flight time: 4,000 km is the last at 820 km/h', [L.flightMin(4000), L.flightMin(4100), L.flightMin(13000)], [340, 345, 940]);
+eq('defaults: no bearing, no belt', L.flightMin(4000, undefined, undefined, undefined), L.flightMin(4000, 0, 0, 0));
+eq('dist: 10 is the first whole number', [L.dist(9.99).km, L.dist(10).km], ['10.0 km', '10 km']);
+const two = [['A', '', 'X', 10, 10, 5, 0], ['B', '', 'X', 10, 10, 5, 0], ['C', '', 'X', 10, 10, 5, 0]];
+eq('nearest: a tie goes to the first listed (the most populous)', L.nearest(two, pt(10, 10)).p[0], 'A');
+eq('biggest in the first zone of the list', L.placeLabel(L.biggestIn(shipped.places, shipped.zones, shipped.zones[0]) || ['none', '', '']),
+  L.placeLabel(shipped.places.find((p) => p[L.P.TZ] === 0)));
+eq('biggest in no zone', L.biggestIn(shipped.places, shipped.zones, 'Mars/Olympus'), null);
+const named = [['Parisville', '', 'X', 0, 0, 9, 0], ['Paris', 'Île-de-France', 'France', 0, 0, 8, 0], ['Paris Hill', '', 'X', 0, 0, 7, 0], ['Paris', 'Texas', 'United States', 0, 0, 6, 0]];
+eq('whole-name matches before the more populous prefixes', L.matchPlaces(named, 'paris').map(L.placeLabel),
+  ['Paris, Île-de-France, France', 'Paris, Texas, United States', 'Parisville, X', 'Paris Hill, X']);
+eq('"victoria" is eight Victorias: nine places have the whole name, so no prefix gets in', L.matchPlaces(shipped.places, 'victoria').map((p) => p[0]), Array(8).fill('Victoria'));
+eq('no bearing is due north, even in the belt (307.5 km is at a rounding edge; found by search)', L.flightMin(307.5, undefined, 40, 40), 70);
+eq('eight by default', L.matchPlaces(Array.from({ length: 12 }, (_, i) => [`Town${i}`, '', 'X', 0, 0, 1, 0]), 'town').length, 8);
+eq('offsets read the minutes and both signs', [L.offsetMin('Asia/Kathmandu', oct27), L.offsetMin('America/St_Johns', jul1), L.offsetMin('Pacific/Marquesas', oct27)], [345, -150, -570]);
+eq('compass: a full turn and more', [360, 371.3, 720, -348.7].map(L.compass), ['north', 'north-northeast', 'north', 'north-northeast']);
+eq('sphere: bearing west is under 360', L.sphere(pt(0, 10), pt(0, 0)).bearing, 270);
+eq('sphere: due north and due south', [L.sphere(pt(0, 0), pt(10, 0)).bearing, L.sphere(pt(10, 0), pt(0, 0)).bearing], [0, 180]);
+eq('the halfway point of a pair 90° apart on the equator', L.midpoint(pt(0, 0), pt(0, 90)), { lat: 0, lon: 45 });
+eq('the halfway point of one place is itself', L.midpoint(pt(12, 34), pt(12, 34)), { lat: 12, lon: 34 });
+eq('a route of one point', L.route(pt(12, 34), pt(12, 34)), [[34, 12]]);
+eq('a route is n+1 points by default', L.route(pt(0, 0), pt(0, 90)).length, 129);
+eq('a crossing at 179 -> -179 closes at 180, halfway in latitude', L.splitAtDateLine([[170, 0], [179, 1], [-179, 2], [-170, 3]]),
+  [[[170, 0], [179, 1], [180, 1.5]], [[-180, 1.5], [-179, 2], [-170, 3]]]);
+eq('a step of exactly 180° is not a crossing', L.splitAtDateLine([[0, 0], [180, 1], [0, 2]]).length, 1);
+eq('the first point is kept', L.splitAtDateLine([[1, 2], [3, 4]]), [[[1, 2], [3, 4]]]);
+
+// Found by search: antipodes where rounding takes the haversine past 1 and the dot product
+// below -1, which is what the two clamps are for (without them: NaN km, a NaN route).
+eq('antipodes past the clamps stay finite', [L.sphere(pt(83.42, 122.56), pt(-83.42, -57.44)).km === Math.PI * L.R_KM,
+  L.route(pt(50.24, 107.78), pt(-50.24, -72.22), 2).flat().every(Number.isFinite)], [true, true]);
+eq('flight time: each 4,000 km bound on its own (found by search, both at a rounding edge)', [L.flightMin(4071.2), L.flightMin(4072.3)], [340, 345]);
+eq('a crossing just east of 0 still closes at +180, at the right latitude', L.splitAtDateLine([[0.5, 0], [-179.6, 1]]).map((p) => p.map(([x, y]) => [x, +y.toFixed(4)])),
+  [[[0.5, 0], [180, 0.9978]], [[-180, 0.9978], [-179.6, 1]]]);
+eq('a step of 180.5° is a crossing', L.splitAtDateLine([[90, 0], [-90.5, 1]]).length, 2);
 
 // --- places and the URL -----------------------------------------------------------------
 eq('"tromso" finds Tromsø', L.placeLabel(L.matchPlaces(shipped.places, 'tromso')[0]), 'Tromsø, Troms, Norway');
