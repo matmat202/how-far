@@ -1,0 +1,138 @@
+{
+ "source": "GeographicLib 2.1, WGS84",
+ "pairs": [
+  {
+   "from": "Palo Alto, California, United States",
+   "to": "Tokyo, Japan",
+   "km": 8330.2213,
+   "bearing": 303.58492,
+   "mid": [
+    48.5526,
+    -171.97517
+   ]
+  },
+  {
+   "from": "London, England, United Kingdom",
+   "to": "New York City, New York, United States",
+   "km": 5585.2127,
+   "bearing": 288.37006,
+   "mid": [
+    52.3701,
+    -41.28991
+   ]
+  },
+  {
+   "from": "Sydney, New South Wales, Australia",
+   "to": "Santiago, Santiago Metropolitan, Chile",
+   "km": 11369.5585,
+   "bearing": 145.35565,
+   "mid": [
+    -61.79316,
+    -139.36262
+   ]
+  },
+  {
+   "from": "Reykjavík, Capital Region, Iceland",
+   "to": "Cape Town, Western Cape, South Africa",
+   "km": 11431.3257,
+   "bearing": 146.46811,
+   "mid": [
+    15.94276,
+    4.77378
+   ]
+  },
+  {
+   "from": "Singapore, Singapore",
+   "to": "Quito, Pichincha, Ecuador",
+   "km": 19741.557,
+   "bearing": 60.37507,
+   "mid": [
+    24.05372,
+    -166.99832
+   ]
+  },
+  {
+   "from": "Apia, Tuamasaga, Samoa",
+   "to": "Pago Pago, Eastern District, American Samoa",
+   "km": 125.122,
+   "bearing": 113.30065,
+   "mid": [
+    -14.05608,
+    -171.23502
+   ]
+  },
+  {
+   "from": "Anchorage, Alaska, United States",
+   "to": "Tokyo, Japan",
+   "km": 5574.5891,
+   "bearing": 273.22321,
+   "mid": [
+    53.65563,
+    164.67215
+   ]
+  },
+  {
+   "from": "Honolulu, Hawaii, United States",
+   "to": "Auckland, New Zealand",
+   "km": 7050.2328,
+   "bearing": 204.37733,
+   "mid": [
+    -7.99396,
+    -170.48852
+   ]
+  },
+  {
+   "from": "Madrid, Spain",
+   "to": "Wellington, Wellington Region, New Zealand",
+   "km": 19854.4494,
+   "bearing": 134.29206,
+   "mid": [
+    -27.1671,
+    59.19293
+   ]
+  },
+  {
+   "from": "Kathmandu, Bagmati Province, Nepal",
+   "to": "New Delhi, Delhi, India",
+   "km": 802.4546,
+   "bearing": 279.19326,
+   "mid": [
+    28.22124,
+    81.28543
+   ]
+  },
+  {
+   "from": "Tromsø, Troms, Norway",
+   "to": "Ushuaia, Tierra del Fuego, Argentina",
+   "km": 15451.5141,
+   "bearing": 241.81663,
+   "mid": [
+    9.9327,
+    -37.94746
+   ]
+  },
+  {
+   "from": "Lagos, Nigeria",
+   "to": "Nairobi, Nairobi County, Kenya",
+   "km": 3811.0772,
+   "bearing": 101.81569,
+   "mid": [
+    2.69934,
+    20.15852
+   ]
+  }
+ ],
+ "antipodes": [
+  {
+   "a": [
+    0.0,
+    0.0
+   ],
+   "b": [
+    0.5,
+    179.7
+   ],
+   "km": 19944.1274
+  }
+ ]
+}
