@@ -27,6 +27,7 @@ function clocks() {
   const d = L.diffWords(from, to, now);
   const day = L.clock(now, from.tz).day !== L.clock(now, to.tz).day ? ' It is a different day there right now.' : '';
   $('diff').textContent = d.text + day;
+  $('jet').textContent = from.label === to.label ? '' : L.jetLag(from, to, now).text;
 }
 
 function drawMap(a, b) {

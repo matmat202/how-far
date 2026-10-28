@@ -159,6 +159,36 @@ export function diffWords(a, b, ms) {
   return { min: d, text: `${short(b.label)} is ${hm(d)} ${d > 0 ? 'ahead of' : 'behind'} ${short(a.label)}.` };
 }
 
+// The shift a body clock makes, from a clock difference in minutes: a day is a full turn,
+// so 16 h ahead is 8 h behind. At exactly 12 h it goes later, the easier way (CDC).
+export function bodyShift(min) {
+  const s = ((min % 1440) + 1440) % 1440;
+  return s >= 720 ? s - 1440 : s;
+}
+
+// Jet lag flying a -> b, at the CDC Yellow Book's average rates (2026, "Jet Lag Disorder"):
+// 1 h a day after flying east, 1.5 h a day after flying west; the disorder starts at two time
+// zones. The CDC gives no light-timing rule of its own, so neither does this.
+export const RATE = { east: 1, west: 1.5 };
+export function jetLag(a, b, ms) {
+  const d = offsetMin(b.tz, ms) - offsetMin(a.tz, ms), s = bodyShift(d);
+  if (!d) return { shift: 0, days: 0, back: 0, text: '' };
+  if (!s) return { shift: 0, days: 0, back: 0, text: `Jet lag: none. ${hm(Math.abs(d))} on the clock is the same time of day to a body.` };
+  if (Math.abs(s) < 120) return { shift: s, days: 0, back: 0, text: `Jet lag: little or none. A shift under 2 h is below the CDC's two time zones for jet lag disorder.` };
+  const east = s > 0;
+  // Home is its own shift: at exactly 12 h both legs go later, so it is not just the reverse.
+  const daysFor = (x) => Math.max(1, Math.round(Math.abs(x) / 60 / (x > 0 ? RATE.east : RATE.west)));
+  const days = daysFor(s), back = daysFor(bodyShift(-d));
+  const way = east ? 'earlier' : 'later';
+  const wrap = s !== d ? `${hm(Math.abs(d))} ${d > 0 ? 'ahead' : 'behind'} is the same body clock as ${hm(Math.abs(s))} ${east ? 'ahead' : 'behind'}, so ` : '';
+  return {
+    shift: s, days, back,
+    text: `Jet lag: ${wrap}your body clock has to run ${hm(Math.abs(s))} ${way}. At the CDC's average of ${east ? '1 h' : '1.5 h'} a day `
+      + `that takes about ${days} day${days === 1 ? '' : 's'} in ${short(b.label)}, and about ${back} coming home. Moving your sleep 1 h ${way} `
+      + `a day for 2–3 days before you fly shortens it; for a trip under 2 days, the CDC suggests keeping ${short(a.label)} hours.`,
+  };
+}
+
 // The clock in a zone: { time: "9:41 AM", day: "Tue" }.
 export function clock(ms, tz) {
   const o = { timeZone: tz };

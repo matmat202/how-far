@@ -139,6 +139,23 @@ eq('Nepal keeps 45 minutes', L.diffWords(find('New Delhi, Delhi, India'), find('
   'Kathmandu is 15 min ahead of New Delhi.');
 eq('Apia is a day ahead of Pago Pago, 125 km away', L.diffWords(find('Pago Pago, Eastern District, American Samoa'), find('Apia, Tuamasaga, Samoa'), oct27).min, 1440);
 eq('same zone, same time', L.diffWords(pa, sf, oct27), { min: 0, text: 'San Francisco and Palo Alto keep the same time.' });
+// --- jet lag (CDC Yellow Book 2026: 1 h/day east, 1.5 h/day west; from two time zones) --
+const tk = { label: 'Tokyo, Japan', tz: 'Asia/Tokyo' }, ny = { label: 'New York City, New York, United States', tz: 'America/New_York' };
+eq('body shift: a full turn is none', [0, 60, -60, 960, -960, 1440, 720, -720, 1439, 810].map(L.bodyShift), [0, 60, -60, -480, 480, 0, -720, -720, -1, -630]);
+const pl = L.jetLag(pa, ldn, nov2), lp = L.jetLag(ldn, pa, nov2);
+eq('east to London: 8 h earlier, 8 days, 5 home', [pl.shift, pl.days, pl.back], [480, 8, 5]);
+eq('west from London: 5 days, 8 home', [lp.shift, lp.days, lp.back], [-480, 5, 8]);
+eq('the London text', pl.text, "Jet lag: your body clock has to run 8 h earlier. At the CDC's average of 1 h a day that takes about 8 days in London, and about 5 coming home. Moving your sleep 1 h earlier a day for 2–3 days before you fly shortens it; for a trip under 2 days, the CDC suggests keeping Palo Alto hours.");
+const pt2 = L.jetLag(pa, tk, nov2);
+eq('Tokyo, 17 h ahead, is 7 h later to a body', [pt2.shift, pt2.days, pt2.back], [-420, 5, 7]);
+ok('and says so', pt2.text.startsWith('Jet lag: 17 h ahead is the same body clock as 7 h behind, so your body clock has to run 7 h later. At the CDC\'s average of 1.5 h a day'), pt2.text);
+eq('Apia: 24 h is no jet lag', L.jetLag(find('Pago Pago, Eastern District, American Samoa'), find('Apia, Tuamasaga, Samoa'), oct27).text, 'Jet lag: none. 24 h on the clock is the same time of day to a body.');
+eq('one zone is below the threshold', L.jetLag(ny, { label: 'Chicago', tz: 'America/Chicago' }, nov2).days, 0);
+ok('three zones is above it', L.jetLag(pa, ny, nov2).days === 3 && /about 3 days in New York City, and about 2 coming home/.test(L.jetLag(pa, ny, nov2).text), L.jetLag(pa, ny, nov2).text);
+eq('two zones west is one day', [L.jetLag(ny, { label: 'Denver', tz: 'America/Denver' }, nov2).shift, L.jetLag(ny, { label: 'Denver', tz: 'America/Denver' }, nov2).days], [-120, 1]);
+const mw = L.jetLag(find('Madrid, Spain'), find('Wellington, Wellington Region, New Zealand'), oct27);
+eq('Madrid -> Wellington, 12 h: both legs go later, 8 days each way', [mw.shift, mw.days, mw.back], [-720, 8, 8]);
+eq('same zone says nothing', L.jetLag(pa, sf, oct27).text, '');
 const apia = L.clock(oct27, 'Pacific/Apia'), pago = L.clock(oct27, 'Pacific/Pago_Pago');
 eq('the same clock on different days', [apia.time === pago.time, apia.day, pago.day], [true, 'Wed', 'Tue']);
 eq('a clock reading', L.clock(Date.UTC(2026, 9, 27, 16, 41), 'America/Los_Angeles'), { time: '9:41 AM', day: 'Tue' });
