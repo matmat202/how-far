@@ -4,6 +4,7 @@ import * as L from './far-logic.js';
 const $ = (id) => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 let PLACES = [], ZONES = [], LAND = '';
+let MORE = null; // while the page runs on seed.json: what a search with no match says
 const state = { from: null, to: null };
 
 function sync() {
@@ -77,10 +78,11 @@ function draw() {
     : f - back >= 15 ? `scheduled, nonstop, into the wind · ${L.hm(back)} coming back` : 'scheduled, nonstop';
   $('half').textContent = `${L.ofHalf(m.km)}%`;
   const mid = drawMap(a, b);
-  const n = L.nearest(PLACES, mid);
-  const where = L.placeLabel(n.p);
-  $('midNote').textContent = `Halfway is at ${L.coord(mid)}. ${n.km < 25 ? `That is in or next to ${where}.`
-    : `The nearest town is ${where}, ${L.dist(n.km).km} away.`}`;
+  // On the seed list the nearest town would be the nearest big city, so name none until the full list is in.
+  const n = MORE ? null : L.nearest(PLACES, mid);
+  const where = n && L.placeLabel(n.p);
+  $('midNote').textContent = `Halfway is at ${L.coord(mid)}.${!n ? '' : n.km < 25 ? ` That is in or next to ${where}.`
+    : ` The nearest town is ${where}, ${L.dist(n.km).km} away.`}`;
 }
 
 // ---- the two town boxes (as in projects/daylight) ----------------------------------------
@@ -98,7 +100,7 @@ function combo(boxId, listId, onPick) {
       li.textContent = L.placeLabel(p);
       ul.append(li);
     });
-    if (!opts.length) { const li = document.createElement('li'); li.className = 'none'; li.textContent = 'No town by that name. Try a bigger place nearby.'; ul.append(li); }
+    if (!opts.length) { const li = document.createElement('li'); li.className = 'none'; li.textContent = MORE || 'No town by that name. Try a bigger place nearby.'; ul.append(li); }
     ul.hidden = false;
     box.setAttribute('aria-expanded', 'true');
     if (active >= 0) { box.setAttribute('aria-activedescendant', `${listId}${active}`); $(`${listId}${active}`).scrollIntoView({ block: 'nearest' }); }
@@ -132,15 +134,35 @@ function wire() {
   setInterval(clocks, 20000);
 }
 
+// The first screen draws from data/seed.json (the biggest town in each zone plus the
+// fallbacks: ~15 KB gzipped, preloaded by index.html) instead of waiting on all of places.json (~770 KB, measured
+// 6.8 s before anything drew on Lighthouse's phone profile). The full list follows for
+// search. A link naming a town the seed lacks waits for the full list, so a shared link
+// never opens on the wrong town.
+const getJSON = (url) => fetch(url).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+function loadPlaces(wanted) {
+  // The full list starts only once the seed is in: on a slow link the two would split it.
+  const seed = getJSON('data/seed.json');
+  const full = seed.then(() => getJSON('data/places.json'), () => getJSON('data/places.json'));
+  full.catch(() => {});
+  return seed.then(
+    (seed) => (wanted.some((l) => l && !L.placeByLabel(seed.places, l)) ? full.then((d) => [d, null]) : [seed, full]),
+    () => full.then((d) => [d, null]));
+}
+// Swap the full list in when it lands: search then covers every town, and an open list redraws.
+function swapIn(rest, redraw) {
+  if (!rest) return;
+  MORE = 'Still loading the full list of towns…';
+  const reopen = () => { const a = document.activeElement; if (a && a.getAttribute('role') === 'combobox' && a.value.trim()) a.dispatchEvent(new Event('input')); };
+  rest.then((d) => { PLACES = d.places; MORE = null; reopen(); if (redraw) redraw(); },
+    () => { MORE = 'Could not load the full list of towns, so only big cities can be found. Reload to try again.'; reopen(); });
+}
+
 async function main() {
-  let doc, land;
-  try {
-    const [r1, r2] = await Promise.all([fetch('data/places.json'), fetch('data/land.json')]);
-    if (!r1.ok || !r2.ok) throw new Error(r1.ok ? r2.status : r1.status);
-    [doc, land] = await Promise.all([r1.json(), r2.json()]);
-  } catch (e) { $('mi').textContent = `Could not load the list of towns (${e.message}). Reload to try again.`; return; }
-  PLACES = doc.places; ZONES = doc.zones; LAND = land.land;
   const want = L.decodeState(location.search);
+  let doc, rest, land;
+  try { [[doc, rest], land] = await Promise.all([loadPlaces([want.from, want.to]), getJSON('data/land.json')]); } catch (e) { $('mi').textContent = `Could not load the list of towns (${e.message}). Reload to try again.`; return; }
+  PLACES = doc.places; ZONES = doc.zones; LAND = land.land;
   const find = (label) => { const p = label && L.placeByLabel(PLACES, label); return p ? L.toPlace(p, ZONES) : null; };
   let mine = null;
   try { mine = L.biggestIn(PLACES, ZONES, Intl.DateTimeFormat().resolvedOptions().timeZone); } catch { /* no zone */ }
@@ -151,5 +173,6 @@ async function main() {
   $('to').value = state.to.label;
   wire();
   draw();
+  swapIn(rest, draw);
 }
 main();
