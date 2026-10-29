@@ -9,7 +9,10 @@ const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = '') => { if (cond) pass++; else { fail++; console.log(`FAIL ${name} ${extra}`); } };
-const eq = (name, a, b) => ok(name, JSON.stringify(a) === JSON.stringify(b), `got ${JSON.stringify(a)} want ${JSON.stringify(b)}`);
+// Output glues numbers to units with U+00A0 (unit-wrap); the expectations below are written
+// with plain spaces for legibility, and the glue itself is pinned in its own section.
+const plain = (v) => JSON.parse(JSON.stringify(v).replace(/\u00a0/g, ' '));
+const eq = (name, a, b) => ok(name, JSON.stringify(plain(a)) === JSON.stringify(b), `got ${JSON.stringify(a)} want ${JSON.stringify(b)}`);
 const near = (name, a, b, tol) => ok(name, Math.abs(a - b) <= tol, `got ${a} want ${b} ±${tol}`);
 const pt = (lat, lon) => ({ lat, lon });
 const bearingGap = (x, y) => Math.abs(((x - y + 540) % 360) - 180);
@@ -148,10 +151,10 @@ eq('west from London: 5 days, 8 home', [lp.shift, lp.days, lp.back], [-480, 5, 8
 eq('the London text', pl.text, "Jet lag: your body clock has to run 8 h earlier. At the CDC's average of 1 h a day that takes about 8 days in London, and about 5 coming home. Moving your sleep 1 h earlier a day for 2–3 days before you fly shortens it; for a trip under 2 days, the CDC suggests keeping Palo Alto hours.");
 const pt2 = L.jetLag(pa, tk, nov2);
 eq('Tokyo, 17 h ahead, is 7 h later to a body', [pt2.shift, pt2.days, pt2.back], [-420, 5, 7]);
-ok('and says so', pt2.text.startsWith('Jet lag: 17 h ahead is the same body clock as 7 h behind, so your body clock has to run 7 h later. At the CDC\'s average of 1.5 h a day'), pt2.text);
+ok('and says so', plain(pt2.text).startsWith('Jet lag: 17 h ahead is the same body clock as 7 h behind, so your body clock has to run 7 h later. At the CDC\'s average of 1.5 h a day'), pt2.text);
 eq('Apia: 24 h is no jet lag', L.jetLag(find('Pago Pago, Eastern District, American Samoa'), find('Apia, Tuamasaga, Samoa'), oct27).text, 'Jet lag: none. 24 h on the clock is the same time of day to a body.');
 eq('one zone is below the threshold', L.jetLag(ny, { label: 'Chicago', tz: 'America/Chicago' }, nov2).days, 0);
-ok('three zones is above it', L.jetLag(pa, ny, nov2).days === 3 && /about 3 days in New York City, and about 2 coming home/.test(L.jetLag(pa, ny, nov2).text), L.jetLag(pa, ny, nov2).text);
+ok('three zones is above it', L.jetLag(pa, ny, nov2).days === 3 && /about 3 days in New York City, and about 2 coming home/.test(plain(L.jetLag(pa, ny, nov2).text)), L.jetLag(pa, ny, nov2).text);
 eq('two zones west is one day', [L.jetLag(ny, { label: 'Denver', tz: 'America/Denver' }, nov2).shift, L.jetLag(ny, { label: 'Denver', tz: 'America/Denver' }, nov2).days], [-120, 1]);
 const mw = L.jetLag(find('Madrid, Spain'), find('Wellington, Wellington Region, New Zealand'), oct27);
 eq('Madrid -> Wellington, 12 h: both legs go later, 8 days each way', [mw.shift, mw.days, mw.back], [-720, 8, 8]);
@@ -211,6 +214,22 @@ eq('a long value is clipped', L.decodeState(`?from=${'x'.repeat(300)}`).from.len
 ok('31,000+ places, all with a zone', shipped.places.length > 31000 && shipped.places.every((p) => shipped.zones[p[L.P.TZ]]));
 const land = existsSync(here('data/land.json')) ? JSON.parse(readFileSync(here('data/land.json'), 'utf8')).land : '';
 ok('the land outline is a path', /^M-?\d/.test(land) && land.length > 20000, String(land.length));
+
+// unit-wrap: a line may never break between a number and its unit. Every string the
+// page prints with a unit, over hours, minutes, distances and three jet-lag shapes.
+{
+  const loose = /\d (h|min|km|mi|days?)\b/;
+  const texts = [];
+  for (const m of [5, 45, 60, 125, 660, 680, 1440]) texts.push(L.hm(m));
+  for (const k of [0, 3.1, 9.99, 1456, 8777]) { const d = L.dist(k); texts.push(d.km, d.mi); }
+  for (const [x, y] of [[pa, ldn], [pa, tk], [pa, ny], [ldn, pa]]) {
+    texts.push(L.jetLag(x, y, nov2).text, L.diffWords(x, y, nov2).text);
+  }
+  const bad = texts.filter((t) => loose.test(t));
+  ok('unit-wrap: no number is followed by a breakable space before its unit', bad.length === 0, JSON.stringify(bad.slice(0, 3)));
+  ok('  control: the strings do carry units, glued', texts.filter((t) => /\d\u00a0(h|min|km|mi|days?)\b/.test(t)).length >= 20);
+  ok('  and the glue is only between number and unit: "11 h 20 min" still breaks after "h"', L.hm(680) === '11\u00a0h 20\u00a0min');
+}
 
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

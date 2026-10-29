@@ -127,11 +127,15 @@ export const num = (n) => Math.round(n).toLocaleString('en-US');
 export function dist(km) {
   const mi = km / 1.609344;
   const f = (v) => (v < 10 ? v.toFixed(1) : num(v));
-  return { km: `${f(km)} km`, mi: `${f(mi)} mi` };
+  return { km: `${f(km)}${NB}km`, mi: `${f(mi)}${NB}mi` };
 }
+// A line may break anywhere but between a number and its unit: on a 390px phone the
+// flight card read "11" at the end of one line and "h 20 min" on the next (unit-wrap,
+// 18 of 18 renders over 6 pairs x 3 iPhone widths split one somewhere).
+export const NB = '\u00a0';
 export function hm(min) {
   const m = Math.abs(Math.round(min)), h = Math.floor(m / 60), r = m % 60;
-  return h && r ? `${h} h ${r} min` : h ? `${h} h` : `${r} min`;
+  return h && r ? `${h}${NB}h ${r}${NB}min` : h ? `${h}${NB}h` : `${r}${NB}min`;
 }
 export function coord({ lat, lon }) {
   const f = (v, pos, neg) => `${Math.abs(v).toFixed(1)}° ${v >= 0 ? pos : neg}`;
@@ -174,7 +178,7 @@ export function jetLag(a, b, ms) {
   const d = offsetMin(b.tz, ms) - offsetMin(a.tz, ms), s = bodyShift(d);
   if (!d) return { shift: 0, days: 0, back: 0, text: '' };
   if (!s) return { shift: 0, days: 0, back: 0, text: `Jet lag: none. ${hm(Math.abs(d))} on the clock is the same time of day to a body.` };
-  if (Math.abs(s) < 120) return { shift: s, days: 0, back: 0, text: `Jet lag: little or none. A shift under 2 h is below the CDC's two time zones for jet lag disorder.` };
+  if (Math.abs(s) < 120) return { shift: s, days: 0, back: 0, text: `Jet lag: little or none. A shift under 2${NB}h is below the CDC's two time zones for jet lag disorder.` };
   const east = s > 0;
   // Home is its own shift: at exactly 12 h both legs go later, so it is not just the reverse.
   const daysFor = (x) => Math.max(1, Math.round(Math.abs(x) / 60 / (x > 0 ? RATE.east : RATE.west)));
@@ -183,9 +187,9 @@ export function jetLag(a, b, ms) {
   const wrap = s !== d ? `${hm(Math.abs(d))} ${d > 0 ? 'ahead' : 'behind'} is the same body clock as ${hm(Math.abs(s))} ${east ? 'ahead' : 'behind'}, so ` : '';
   return {
     shift: s, days, back,
-    text: `Jet lag: ${wrap}your body clock has to run ${hm(Math.abs(s))} ${way}. At the CDC's average of ${east ? '1 h' : '1.5 h'} a day `
-      + `that takes about ${days} day${days === 1 ? '' : 's'} in ${short(b.label)}, and about ${back} coming home. Moving your sleep 1 h ${way} `
-      + `a day for 2–3 days before you fly shortens it; for a trip under 2 days, the CDC suggests keeping ${short(a.label)} hours.`,
+    text: `Jet lag: ${wrap}your body clock has to run ${hm(Math.abs(s))} ${way}. At the CDC's average of ${east ? `1${NB}h` : `1.5${NB}h`} a day `
+      + `that takes about ${days}${NB}day${days === 1 ? '' : 's'} in ${short(b.label)}, and about ${back} coming home. Moving your sleep 1${NB}h ${way} `
+      + `a day for 2–3${NB}days before you fly shortens it; for a trip under 2${NB}days, the CDC suggests keeping ${short(a.label)} hours.`,
   };
 }
 

@@ -58,7 +58,7 @@ function draw() {
   clocks();
   const m = L.measure(a, b);
   if (a.label === b.label) {
-    $('km').textContent = '0 km';
+    $('km').textContent = `0${L.NB}km`;
     $('mi').textContent = 'That is the same town twice. Pick a second one.';
     for (const id of ['heading', 'fly', 'half']) $(id).textContent = '–';
     $('flySub').textContent = 'a scheduled flight';
