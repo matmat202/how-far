@@ -45,11 +45,11 @@ button{cursor:pointer;color:var(--accent);font-weight:600}
 .big{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 10px}
 .big b{font-size:34px;font-variant-numeric:tabular-nums;color:var(--accent)}
 .big span{font-size:18px;color:var(--ink-2);font-variant-numeric:tabular-nums}
-.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0;padding:0;list-style:none}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
 .facts li{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .facts b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
 .facts span{font-size:12px;color:var(--ink-2)}
-.clocks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 0}
+.clocks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0 0}
 .clocks div{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .clocks b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
 .clocks span{font-size:12px;color:var(--ink-2)}
@@ -68,7 +68,7 @@ button{cursor:pointer;color:var(--accent);font-weight:600}
 .key i.flat{border-top:2px dashed var(--ink-2)}
 footer{font-size:12px;color:var(--ink-2);line-height:1.5;margin:18px 2px 8px}
 [hidden]{display:none!important}
-@media (max-width:560px){.pick{grid-template-columns:1fr}#swap{margin:0;justify-self:start}.facts{grid-template-columns:1fr 1fr}
+@media (max-width:560px){.pick{grid-template-columns:1fr}#swap{margin:0;justify-self:start}.facts{grid-template-columns:repeat(2,minmax(0,1fr))}
   .facts li:last-child{grid-column:span 2}.big b{font-size:28px}.clocks b{font-size:18px}}
 </style>
 </head>
