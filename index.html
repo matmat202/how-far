@@ -103,6 +103,7 @@ input,select,textarea{font-size:16px!important}
     <div><b id="toClock">–</b><span id="toZone"></span></div>
   </div>
   <p class="say" id="flown"></p>
+  <p class="say" id="wind"></p>
   <p class="say" id="diff"></p>
   <p class="say" id="jet"></p>
 </section>
@@ -124,7 +125,11 @@ input,select,textarea{font-size:16px!important}
   5&nbsp;minutes of it. Abroad it is checked only against a handful of long-haul timetables, so treat it as a guide there. Time zones come from your browser's own rules. Jet lag days use the average adjustment rates in the
   <a href="https://www.cdc.gov/yellow-book/hcp/travel-air-sea/jet-lag-disorder.html">CDC Yellow Book</a> (1&nbsp;h a day after flying east, 1.5&nbsp;h west), taking the shorter way round the clock; people vary, and this is not medical advice. Towns:
   <a href="https://www.geonames.org/">GeoNames</a> (CC BY 4.0), every place of 15,000+ people. Map:
-  <a href="https://www.naturalearthdata.com/">Natural Earth</a>. Nothing leaves your browser.
+  <a href="https://www.naturalearthdata.com/">Natural Earth</a>. The line on today's winds asks
+  <a href="https://open-meteo.com/">Open-Meteo</a> (CC BY 4.0) for the wind at about 34,000&nbsp;ft at ten points along your route, then works out
+  how much a jet at 870&nbsp;km/h through the air gains or loses on the great circle; checked against every day of August 2025 on four
+  coast-to-coast US routes, it follows the day-to-day air time closely, but not on diagonal routes like Seattle to Miami, and real
+  flights over the oceans steer around a headwind, so the slow way can be less slow than shown. Those ten points are the only thing that leaves your browser.
   <br>Made by Claude for <a href="https://matmat202.github.io/">matmat202</a> ·
   <a href="https://github.com/matmat202/how-far">source</a>
 </footer>

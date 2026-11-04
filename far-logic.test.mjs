@@ -249,5 +249,48 @@ eq('flown extra: halfway between knots is halfway between their values', L.flown
 ok('flown extra never falls as the trip gets longer',
   Array.from({ length: 420 }, (_, i) => L.flownExtra(200 + i * 10)).every((v, i, a) => i === 0 || v >= a[i - 1]));
 
+// --- today's wind at cruising height (projects/jet-today) ------------------------------
+{
+  const eqA = { lat: 0, lon: 0 }, eqB = { lat: 0, lon: 40 }, km = L.measure(eqA, eqB).km, legs = L.windLegs(eqA, eqB);
+  eq('wind: WIND_N legs', legs.length, L.WIND_N);
+  ok('wind: an equator route heads due east on every leg', legs.every((g) => Math.abs(g.track - 90) < 1e-6), JSON.stringify(legs.map((g) => g.track)));
+  ok('wind: leg middles sit at 2, 6, ... 38 degrees east', legs.every((g, i) => Math.abs(g.lon - (4 * i + 2)) < 1e-6 && Math.abs(g.lat) < 1e-9));
+  const calm = legs.map(() => ({ speed: 0, from: 270 })), west100 = legs.map(() => ({ speed: 100, from: 270 }));
+  near('wind: still air is zero minutes', L.windMinutes(km, legs, calm), 0, 1e-9);
+  near('wind: a 100 km/h westerly flying east', L.windMinutes(km, legs, west100), (km / (L.WIND_TAS + 100) - km / L.WIND_TAS) * 60, 1e-9);
+  near('wind: the same westerly flying back', L.windMinutes(km, legs, west100, true), (km / (L.WIND_TAS - 100) - km / L.WIND_TAS) * 60, 1e-9);
+  near('wind: a pure crosswind is zero', L.windMinutes(km, legs, legs.map(() => ({ speed: 100, from: 0 }))), 0, 1e-9);
+  ok('wind: an easterly slows the eastbound leg', L.windMinutes(km, legs, legs.map(() => ({ speed: 100, from: 90 }))) > 0);
+  eq('wind: null under WIND_MIN_KM, on a short list, or a missing value', [
+    L.windMinutes(L.WIND_MIN_KM - 0.1, legs, calm), L.windMinutes(km, legs, calm.slice(1)),
+    L.windMinutes(km, legs, [...calm.slice(1), { speed: null, from: 270 }])], [null, null, null]);
+  ok('wind: the URL asks for every leg, at 250 hPa', L.windURL(legs).split('latitude=')[1].split('&')[0].split(',').length === L.WIND_N
+    && L.windURL(legs).includes('current=wind_speed_250hPa,wind_direction_250hPa') && L.windURL(legs).includes('wind_speed_unit=kmh'));
+  eq('wind: one point is an object, several a list', [L.windsFrom({ current: { wind_speed_250hPa: 5, wind_direction_250hPa: 7 } }),
+    L.windsFrom([{ current: { wind_speed_250hPa: 1, wind_direction_250hPa: 2 } }, {}])],
+  [[{ speed: 5, from: 7 }], [{ speed: 1, from: 2 }, {}]]);
+  eq('wind: words', [L.windWords(-14.4, 15.6, 'San Francisco, California', 'New York City, New York'), L.windWords(2.4, -2.4, 'A', 'B'), L.windWords(null, 3, 'A', 'B')],
+    ['Winds at cruising height right now: San Francisco to New York City flies 14 min faster than in still air, and the way back 16 min slower than in still air.',
+      'Winds at cruising height right now: A to B flies about as long as in still air, and the way back about as long as in still air.', '']);
+  // Against reality: each day of August 2025, the page's own legs and model vs the median BTS
+  // air time (test/wind-days.json). Nothing here is fitted, so the slope is a test of the model.
+  const days = JSON.parse(readFileSync(here(existsSync(here('../test/wind-days.json')) ? '../test/wind-days.json' : 'test/wind-days.json'), 'utf8'));
+  const stat = (r) => {
+    const g = L.windLegs(r.a, r.b), x = r.rows.map((d) => L.windMinutes(r.km, g, d.winds.map(([speed, from]) => ({ speed, from })))), y = r.rows.map((d) => d.air);
+    const mx = x.reduce((s, v) => s + v, 0) / x.length, my = y.reduce((s, v) => s + v, 0) / y.length;
+    let sxy = 0, sxx = 0, syy = 0;
+    x.forEach((v, i) => { sxy += (v - mx) * (y[i] - my); sxx += (v - mx) ** 2; syy += (y[i] - my) ** 2; });
+    return { r: sxy / Math.sqrt(sxx * syy), slope: sxy / sxx, n: x.length };
+  };
+  for (const k of ['SFO-JFK', 'JFK-SFO', 'LAX-JFK', 'JFK-LAX']) {
+    const s = stat(days[k]);
+    ok(`wind vs BTS ${k}: 31 days, r >= 0.8, slope 0.7-1.3`, s.n === 31 && s.r >= 0.8 && s.slope >= 0.7 && s.slope <= 1.3, JSON.stringify(s));
+  }
+  // The honest caveat, pinned: on the diagonal the model does NOT explain the day. If this
+  // starts passing r >= 0.8, the fixture changed, not the world.
+  const sm = stat(days['SEA-MIA']);
+  ok('wind vs BTS SEA-MIA stays weak (the caveat holds)', sm.n === 30 && sm.r < 0.6, JSON.stringify(sm));
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

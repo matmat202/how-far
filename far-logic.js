@@ -140,6 +140,51 @@ export function flownExtra(km) {
   return K[K.length - 1][1];
 }
 
+// Today's wind at cruising height (projects/jet-today). The route is cut into WIND_N equal
+// legs; each leg's middle gets the 250 hPa wind (about 34,000 ft) from Open-Meteo, and a jet
+// at WIND_TAS km/h through the air covers the leg at that speed plus the wind's share along
+// the track. The answer is minutes against still air, + slower and - faster. Checked against
+// BTS August 2025 (state/scratch/jet-today/validate.py): on 12 coast-to-coast and
+// cross-country routes it tracked each day's median air time at r = 0.71-0.95, slope near 1,
+// with nothing fitted; on the diagonal Seattle-Miami it did not (r 0.39-0.51). Under
+// WIND_MIN_KM the effect is a minute or two, so null.
+export const WIND_N = 10, WIND_TAS = 870, WIND_MIN_KM = 1000;
+export function windLegs(a, b) {
+  const pts = route(a, b, 2 * WIND_N);
+  const legs = [];
+  for (let i = 0; i < WIND_N; i++) {
+    const [lon0, lat0] = pts[2 * i], [lon, lat] = pts[2 * i + 1], [lon1, lat1] = pts[2 * i + 2];
+    legs.push({ lat, lon, track: sphere({ lat: lat0, lon: lon0 }, { lat: lat1, lon: lon1 }).bearing });
+  }
+  return legs;
+}
+export function windURL(legs) {
+  const f = (k) => legs.map((p) => p[k].toFixed(2)).join(',');
+  return `https://api.open-meteo.com/v1/forecast?latitude=${f('lat')}&longitude=${f('lon')}`
+    + '&current=wind_speed_250hPa,wind_direction_250hPa&wind_speed_unit=kmh';
+}
+// winds: [{ speed km/h, from: degrees the wind blows FROM }], one per leg. back=true flies b to a.
+export function windMinutes(km, legs, winds, back = false) {
+  if (km < WIND_MIN_KM || winds.length !== legs.length) return null;
+  let h = 0;
+  for (let i = 0; i < legs.length; i++) {
+    const { speed, from } = winds[i];
+    if (!Number.isFinite(speed) || !Number.isFinite(from)) return null;
+    const track = back ? legs[i].track + 180 : legs[i].track;
+    h += km / legs.length / (WIND_TAS + speed * Math.cos((from + 180 - track) * RAD));
+  }
+  return (h - km / WIND_TAS) * 60;
+}
+// Open-Meteo answers one point as an object and several as a list.
+export function windsFrom(json) {
+  return (Array.isArray(json) ? json : [json]).map((r) => ({ speed: r?.current?.wind_speed_250hPa, from: r?.current?.wind_direction_250hPa }));
+}
+export function windWords(out, back, a, b) {
+  if (out == null || back == null) return '';
+  const say = (m) => (Math.abs(m) < 2.5 ? 'about as long as in still air' : `${num(Math.abs(m))}${NB}min ${m < 0 ? 'faster' : 'slower'} than in still air`);
+  return `Winds at cruising height right now: ${short(a)} to ${short(b)} flies ${say(out)}, and the way back ${say(back)}.`;
+}
+
 // ---- words ---------------------------------------------------------------------------
 
 export const num = (n) => Math.round(n).toLocaleString('en-US');

@@ -52,6 +52,28 @@ function drawMap(a, b) {
   return m;
 }
 
+// Today's wind at cruising height, from Open-Meteo: one request per pair of towns (the swap
+// reuses it, flying the same points the other way), kept for the visit. A route picked while
+// one is in flight wins; a failure just leaves the line out.
+const WIND = new Map();
+let windFor = '';
+function winds(a, b, km) {
+  const flip = a.label > b.label, [p, q] = flip ? [b, a] : [a, b], key = `${p.label}|${q.label}|${a.label}`;
+  windFor = key;
+  $('wind').textContent = '';
+  if (km < L.WIND_MIN_KM) return;
+  const pair = `${p.label}|${q.label}`, legs = L.windLegs(p, q);
+  if (!WIND.has(pair)) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
+    WIND.set(pair, fetch(L.windURL(legs), { signal: ctl.signal }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(L.windsFrom).finally(() => clearTimeout(t)));
+    WIND.get(pair).catch(() => WIND.delete(pair));
+  }
+  WIND.get(pair).then((w) => {
+    if (windFor === key) $('wind').textContent = L.windWords(L.windMinutes(km, legs, w, flip), L.windMinutes(km, legs, w, !flip), a.label, b.label);
+  }, () => {});
+}
+
 function draw() {
   const a = state.from, b = state.to;
   sync();
@@ -62,6 +84,7 @@ function draw() {
     $('mi').textContent = 'That is the same town twice. Pick a second one.';
     for (const id of ['heading', 'fly', 'half']) $(id).textContent = '–';
     $('flown').textContent = '';
+    $('wind').textContent = '';
     $('flySub').textContent = 'a scheduled flight';
     $('headingSub').textContent = 'to set off in';
     drawMap(a, b);
@@ -81,6 +104,7 @@ function draw() {
   const x = f == null ? null : L.flownExtra(m.km);
   $('flown').textContent = x == null ? '' : `An airliner actually flies about ${L.dist(m.km + x).km}, ${L.dist(Math.round(x / 5) * 5).km} more than this,`
     + ' most of it climbing out and lining up to land near the airports rather than on the way.';
+  winds(a, b, m.km);
   $('half').textContent = `${L.ofHalf(m.km)}%`;
   const mid = drawMap(a, b);
   // On the seed list the nearest town would be the nearest big city, so name none until the full list is in.
