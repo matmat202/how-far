@@ -121,6 +121,25 @@ export function flightMin(km, bearing = 0, latA = 0, latB = 0) {
   return Math.round((45 + cruise - wind) / 5) * 5;
 }
 
+// How much farther a real airliner flies than the great circle, in km: the median of 5,948
+// US flights traced by ADS-B on 2025-10-01 and 2025-11-01 (projects/flight-detour), joined
+// linearly between the median distance of each band and flat below the first. About three
+// quarters of it is climbing out and lining up to land within 100 km of the airports, not
+// en route. Nothing was measured past 4,400 km, so past it, and under 200 km, null.
+export const DETOUR_KNOTS = [[357, 54], [723, 70], [1404, 85], [2551, 90], [3887, 117]];
+export function flownExtra(km) {
+  if (km < 200 || km > 4400) return null;
+  const K = DETOUR_KNOTS;
+  if (km <= K[0][0]) return K[0][1];
+  for (let i = 1; i < K.length; i++) {
+    if (km <= K[i][0]) {
+      const [x0, y0] = K[i - 1], [x1, y1] = K[i];
+      return y0 + ((y1 - y0) * (km - x0)) / (x1 - x0);
+    }
+  }
+  return K[K.length - 1][1];
+}
+
 // ---- words ---------------------------------------------------------------------------
 
 export const num = (n) => Math.round(n).toLocaleString('en-US');

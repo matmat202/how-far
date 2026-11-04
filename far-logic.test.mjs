@@ -240,5 +240,14 @@ ok('the land outline is a path', /^M-?\d/.test(land) && land.length > 20000, Str
   ok('  and the glue is only between number and unit: "11 h 20 min" still breaks after "h"', L.hm(680) === '11\u00a0h 20\u00a0min');
 }
 
+// flown distance: the measured median extra, interpolated (projects/flight-detour/data)
+eq('flown extra: null where nothing was measured', [L.flownExtra(199.9), L.flownExtra(4400.1)], [null, null]);
+eq('flown extra: flat below the first knot, exact on each knot',
+  [L.flownExtra(200), L.flownExtra(357), L.flownExtra(723), L.flownExtra(1404), L.flownExtra(2551), L.flownExtra(3887), L.flownExtra(4400)],
+  [54, 54, 70, 85, 90, 117, 117]);
+eq('flown extra: halfway between knots is halfway between their values', L.flownExtra((723 + 1404) / 2), 77.5);
+ok('flown extra never falls as the trip gets longer',
+  Array.from({ length: 420 }, (_, i) => L.flownExtra(200 + i * 10)).every((v, i, a) => i === 0 || v >= a[i - 1]));
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

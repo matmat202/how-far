@@ -61,6 +61,7 @@ function draw() {
     $('km').textContent = `0${L.NB}km`;
     $('mi').textContent = 'That is the same town twice. Pick a second one.';
     for (const id of ['heading', 'fly', 'half']) $(id).textContent = '–';
+    $('flown').textContent = '';
     $('flySub').textContent = 'a scheduled flight';
     $('headingSub').textContent = 'to set off in';
     drawMap(a, b);
@@ -77,6 +78,9 @@ function draw() {
   $('fly').textContent = f == null ? 'too close' : `${L.hm(f)}`;
   $('flySub').textContent = f == null ? 'to fly' : back - f >= 15 ? `scheduled, nonstop · ${L.hm(back)} coming back, against the wind`
     : f - back >= 15 ? `scheduled, nonstop, into the wind · ${L.hm(back)} coming back` : 'scheduled, nonstop';
+  const x = f == null ? null : L.flownExtra(m.km);
+  $('flown').textContent = x == null ? '' : `An airliner actually flies about ${L.dist(m.km + x).km}, ${L.dist(Math.round(x / 5) * 5).km} more than this,`
+    + ' most of it climbing out and lining up to land near the airports rather than on the way.';
   $('half').textContent = `${L.ofHalf(m.km)}%`;
   const mid = drawMap(a, b);
   // On the seed list the nearest town would be the nearest big city, so name none until the full list is in.

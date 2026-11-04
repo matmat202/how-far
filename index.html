@@ -102,6 +102,7 @@ input,select,textarea{font-size:16px!important}
     <div><b id="fromClock">–</b><span id="fromZone"></span></div>
     <div><b id="toClock">–</b><span id="toZone"></span></div>
   </div>
+  <p class="say" id="flown"></p>
   <p class="say" id="diff"></p>
   <p class="say" id="jet"></p>
 </section>
@@ -114,7 +115,10 @@ input,select,textarea{font-size:16px!important}
 
 <footer>
   Distance and the starting direction are measured on the WGS84 ellipsoid, the Earth's shape as GPS uses it (Vincenty's
-  formula, checked against GeographicLib to the metre), from town centre to town centre. Roads and flight paths are longer.
+  formula, checked against GeographicLib to the metre), from town centre to town centre. Roads are longer, and so are flight paths: the
+  extra distance a plane flies is the median of 5,948 US airline flights traced by ADS-B
+  (<a href="https://www.adsbexchange.com/">ADS-B Exchange</a> samples, 1&nbsp;October and 1&nbsp;November 2025), about 50&nbsp;km on a short hop and 115&nbsp;km
+  coast to coast, three quarters of it within 100&nbsp;km of the two airports. It is shown only for 200 to 4,400&nbsp;km, the range that was measured.
   The flight time is fitted to the median scheduled time of 5,955 US routes (BTS, August 2025): 45 minutes for taxi, climb
   and descent, 820&nbsp;km/h, faster past 4,000&nbsp;km, and the jet stream's pull between 25° and 60° of latitude. Half of those routes land within
   5&nbsp;minutes of it. Abroad it is checked only against a handful of long-haul timetables, so treat it as a guide there. Time zones come from your browser's own rules. Jet lag days use the average adjustment rates in the
