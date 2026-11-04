@@ -159,6 +159,15 @@ eq('two zones west is one day', [L.jetLag(ny, { label: 'Denver', tz: 'America/De
 const mw = L.jetLag(find('Madrid, Spain'), find('Wellington, Wellington Region, New Zealand'), oct27);
 eq('Madrid -> Wellington, 12 h: both legs go later, 8 days each way', [mw.shift, mw.days, mw.back], [-720, 8, 8]);
 eq('same zone says nothing', L.jetLag(pa, sf, oct27).text, '');
+// Shapes and edges mutwatch found unpinned (2026-11-03).
+eq('body shift past a day: Kiritimati (+14) to Pago Pago (-11) is 25 h', [1500, -1500].map(L.bodyShift), [60, -60]);
+eq('same zone: every number is zero', L.jetLag(pa, sf, oct27), { shift: 0, days: 0, back: 0, text: '' });
+const apiaLag = L.jetLag(find('Pago Pago, Eastern District, American Samoa'), find('Apia, Tuamasaga, Samoa'), oct27);
+eq('a full turn: every number is zero', [apiaLag.shift, apiaLag.days, apiaLag.back], [0, 0, 0]);
+const chi = L.jetLag(ny, { label: 'Chicago', tz: 'America/Chicago' }, nov2);
+eq('one zone: shifts, but no days either way', [chi.shift, chi.days, chi.back], [-60, 0, 0]);
+// Tehran is UTC+3:30 all year: 3.5 h east at 1 h a day rounds to 4 days, not 3.
+eq('a half-hour zone rounds on hours', L.jetLag({ label: 'UTC', tz: 'UTC' }, { label: 'Tehran, Iran', tz: 'Asia/Tehran' }, nov2).days, 4);
 const apia = L.clock(oct27, 'Pacific/Apia'), pago = L.clock(oct27, 'Pacific/Pago_Pago');
 eq('the same clock on different days', [apia.time === pago.time, apia.day, pago.day], [true, 'Wed', 'Tue']);
 eq('a clock reading', L.clock(Date.UTC(2026, 9, 27, 16, 41), 'America/Los_Angeles'), { time: '9:41 AM', day: 'Tue' });
