@@ -246,6 +246,17 @@ eq('flown extra: flat below the first knot, exact on each knot',
   [L.flownExtra(200), L.flownExtra(357), L.flownExtra(723), L.flownExtra(1404), L.flownExtra(2551), L.flownExtra(3887), L.flownExtra(4400)],
   [54, 54, 70, 85, 90, 117, 117]);
 eq('flown extra: halfway between knots is halfway between their values', L.flownExtra((723 + 1404) / 2), 77.5);
+// The FIRST segment was the untested one: every case above lands either below the first knot
+// or exactly on a knot, and both read the same whether the scan starts at segment 1 or 2, so
+// starting it at 2 — which extrapolates (723,70)->(1404,85) backwards over the whole 357-723
+// band — went unseen. These two pin the inside of that band, where the two differ by 8 min.
+near('flown extra: halfway along the FIRST segment too', L.flownExtra((357 + 723) / 2), 62, 1e-12);
+near('flown extra: just past the first knot it has already left the flat',
+  L.flownExtra(357.1), 54 + (16 * 0.1) / 366, 1e-12);
+// Knots are measured, not chosen (projects/flight-detour: ADS-B 2025-10-01 and 2025-11-01), so
+// an edit to one is a change of data. Interpolation hides a knot move almost everywhere.
+eq('flown extra: the knot table is the measured one',
+  L.DETOUR_KNOTS, [[357, 54], [723, 70], [1404, 85], [2551, 90], [3887, 117]]);
 ok('flown extra never falls as the trip gets longer',
   Array.from({ length: 420 }, (_, i) => L.flownExtra(200 + i * 10)).every((v, i, a) => i === 0 || v >= a[i - 1]));
 
@@ -264,14 +275,31 @@ ok('flown extra never falls as the trip gets longer',
   eq('wind: null under WIND_MIN_KM, on a short list, or a missing value', [
     L.windMinutes(L.WIND_MIN_KM - 0.1, legs, calm), L.windMinutes(km, legs, calm.slice(1)),
     L.windMinutes(km, legs, [...calm.slice(1), { speed: null, from: 270 }])], [null, null, null]);
+  // ...and the boundary itself is INSIDE. Written as `WIND_MIN_KM - 0.1`, the case above moves
+  // with the constant, so it holds for < and for <= alike and says nothing about which.
+  ok('wind: exactly WIND_MIN_KM is answered, not refused', L.windMinutes(L.WIND_MIN_KM, legs, calm) !== null);
+  // Every wind expectation here is written in terms of L.WIND_TAS and L.WIND_MIN_KM, so it
+  // follows the constant wherever it is moved. Only a literal pins the validated value:
+  // 870 km/h TAS and the 1,000 km floor are what the BTS check below was run against.
+  eq('wind: the modelled constants are the validated ones', [L.WIND_N, L.WIND_TAS, L.WIND_MIN_KM], [10, 870, 1000]);
   ok('wind: the URL asks for every leg, at 250 hPa', L.windURL(legs).split('latitude=')[1].split('&')[0].split(',').length === L.WIND_N
     && L.windURL(legs).includes('current=wind_speed_250hPa,wind_direction_250hPa') && L.windURL(legs).includes('wind_speed_unit=kmh'));
+  // Counting the commas does not see the precision, and 250 hPa winds are a coarse grid: two
+  // decimals (~1 km) is the deliberate choice, and a longer tail is a different cache key.
+  ok('wind: coordinates go out at exactly 2 decimals',
+    L.windURL(legs).split('latitude=')[1].split('&')[0].split(',').every((v) => /^-?\d+\.\d\d$/.test(v)),
+    L.windURL(legs).split('latitude=')[1].split('&')[0]);
   eq('wind: one point is an object, several a list', [L.windsFrom({ current: { wind_speed_250hPa: 5, wind_direction_250hPa: 7 } }),
     L.windsFrom([{ current: { wind_speed_250hPa: 1, wind_direction_250hPa: 2 } }, {}])],
   [[{ speed: 5, from: 7 }], [{ speed: 1, from: 2 }, {}]]);
   eq('wind: words', [L.windWords(-14.4, 15.6, 'San Francisco, California', 'New York City, New York'), L.windWords(2.4, -2.4, 'A', 'B'), L.windWords(null, 3, 'A', 'B')],
     ['Winds at cruising height right now: San Francisco to New York City flies 14 min faster than in still air, and the way back 16 min slower than in still air.',
       'Winds at cruising height right now: A to B flies about as long as in still air, and the way back about as long as in still air.', '']);
+  // 2.4 is inside the quiet band under both < 2.5 and <= 2.5. Exactly 2.5 is the only input
+  // that tells them apart, and it must read as a number: the band is "under two and a half".
+  eq('wind: 2.5 min is a number, not "about as long" — the cutoff is strictly below it',
+    L.windWords(2.5, -2.5, 'A', 'B'),
+    'Winds at cruising height right now: A to B flies 3 min slower than in still air, and the way back 3 min faster than in still air.');
   // Against reality: each day of August 2025, the page's own legs and model vs the median BTS
   // air time (test/wind-days.json). Nothing here is fitted, so the slope is a test of the model.
   const days = JSON.parse(readFileSync(here(existsSync(here('../test/wind-days.json')) ? '../test/wind-days.json' : 'test/wind-days.json'), 'utf8'));
