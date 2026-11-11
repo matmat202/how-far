@@ -273,9 +273,19 @@ export const P = { NAME: 0, A1: 1, CC: 2, LAT: 3, LON: 4, POP: 5, TZ: 6 };
 
 // Letters NFD does not take apart: "tromso" has to find the slashed o of Tromso, "lodz" the barred l of Lodz.
 const LETTERS = { 'ø': 'o', 'æ': 'ae', 'œ': 'oe', 'ß': 'ss', 'ł': 'l', 'đ': 'd', 'ð': 'd', 'þ': 'th', 'ı': 'i', 'ħ': 'h' };
+// Memoised on the coerced string: matchPlaces and placeByLabel fold every name in the
+// places file on every call, so the live search re-folded thousands of names per keystroke.
+// node --cpu-prof put fold at 59% of how-far's equivalence sweep and 27% of when-works'
+// (2026-11-11). The key is the coerced string, never the argument, so a non-string cannot
+// hold a reference; distinct keys are bounded by the place names plus the queries typed.
+const foldCache = new Map();
 export function fold(s) {
-  return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  const k = String(s);
+  if (foldCache.has(k)) return foldCache.get(k);
+  const v = k.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
     .replace(/[øæœßłđðþıħ]/g, (c) => LETTERS[c]).replace(/[^a-z0-9]+/g, ' ').trim();
+  foldCache.set(k, v);
+  return v;
 }
 
 export function placeLabel(p) {
