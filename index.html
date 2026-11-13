@@ -41,6 +41,7 @@ button{cursor:pointer;color:var(--accent);font-weight:600}
 .opts li{padding:8px 10px;border-radius:7px;cursor:pointer}
 .opts li[aria-selected="true"]{background:var(--ground)}
 .opts li.none{color:var(--ink-2);cursor:default}
+.opts li .aka{color:var(--ink-2)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0 0}
 .big{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 10px}
 .big b{font-size:34px;font-variant-numeric:tabular-nums;color:var(--accent)}
@@ -81,12 +82,12 @@ input,select,textarea{font-size:16px!important}
 
 <div class="pick">
   <div class="box"><label for="from">From</label>
-    <input id="from" type="search" autocomplete="off" spellcheck="false" placeholder="Type a town or city" role="combobox"
+    <input id="from" type="search" autocomplete="off" spellcheck="false" placeholder="A town, a city or an airport code" role="combobox"
       aria-autocomplete="list" aria-expanded="false" aria-controls="fromList">
     <ul id="fromList" class="opts" role="listbox" aria-label="Places to start from" hidden></ul></div>
   <button type="button" id="swap" aria-label="Swap the two towns">⇄</button>
   <div class="box"><label for="to">To</label>
-    <input id="to" type="search" autocomplete="off" spellcheck="false" placeholder="Type a town or city" role="combobox"
+    <input id="to" type="search" autocomplete="off" spellcheck="false" placeholder="A town, a city or an airport code" role="combobox"
       aria-autocomplete="list" aria-expanded="false" aria-controls="toList">
     <ul id="toList" class="opts" role="listbox" aria-label="Places to go to" hidden></ul></div>
 </div>

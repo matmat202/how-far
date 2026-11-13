@@ -213,6 +213,31 @@ eq('a step of 180.5° is a crossing', L.splitAtDateLine([[90, 0], [-90.5, 1]]).l
 // --- places and the URL -----------------------------------------------------------------
 eq('"tromso" finds Tromsø', L.placeLabel(L.matchPlaces(shipped.places, 'tromso')[0]), 'Tromsø, Troms, Norway');
 eq('"wellington, new" finds the capital', L.placeLabel(L.matchPlaces(shipped.places, 'wellington, new')[0]), 'Wellington, Wellington Region, New Zealand');
+
+// --- other names and airport codes (data/aliases.json, built by build.py) ----------------
+const aliases = existsSync(here('data/aliases.json')) ? JSON.parse(readFileSync(here('data/aliases.json'), 'utf8')) : null;
+ok('shipped aliases exist and index the shipped list', aliases && aliases.n === shipped.places.length
+  && Object.values(aliases.aliases).every((i) => Number.isInteger(i) && i >= 0 && i < shipped.places.length));
+const top = (q) => L.placeLabel(L.matchPlaces(shipped.places, q, 8, aliases)[0] || ['none', '', '']);
+for (const [q, want] of [['lhr', 'London, England, United Kingdom'], ['JFK', 'New York City, New York, United States'],
+  ['cdg', 'Paris, Île-de-France, France'], ['hnd', 'Tokyo, Japan'], ['sfo', 'San Francisco, California, United States'],
+  ['nyc', 'New York City, New York, United States'], ['kiev', 'Kyiv, Kyiv City, Ukraine'], ['bombay', 'Mumbai, Maharashtra, India'],
+  ['cologne', 'Köln, North Rhine-Westphalia, Germany'], ['lisboa', 'Lisbon, Portugal'], ['saigon', 'Ho Chi Minh City, Ho Chi Minh City (HCMC), Vietnam'],
+  ['kiev, ukr', 'Kyiv, Kyiv City, Ukraine']]) eq(`"${q}" finds ${q.length > 3 ? 'the town by its other name' : 'the town it serves'}`, top(q), want);
+eq('without the alias file "lhr" finds nothing', L.matchPlaces(shipped.places, 'lhr').length, 0);
+{ const la = L.matchPlaces(shipped.places, 'la', 8, aliases).map(L.placeLabel);
+  ok('"la" offers Los Angeles before Lagos', la.indexOf('Los Angeles, California, United States') >= 0
+    && la.indexOf('Los Angeles, California, United States') < la.indexOf('Lagos, Nigeria'), JSON.stringify(la)); }
+eq('an alias still honours the region after the comma', top('lax, japan') === 'Los Angeles, California, United States', false);
+{ const mx = L.matchPlaces(shipped.places, 'mex', 8, aliases).map(L.placeLabel);
+  eq('a town that is both the alias and a prefix is listed once', mx.filter((l) => l === 'Mexico City, Mexico').length, 1); }
+{ const toy = [['Lax', '', 'X', 0, 0, 9, 0], ['Laxou', '', 'X', 0, 0, 8, 0], ['Los Angeles', '', 'X', 0, 0, 1, 0]];
+  const al = { n: 3, aliases: { lax: 2 } };
+  eq('the town really called that comes first, then the alias, then prefixes', L.matchPlaces(toy, 'lax', 8, al).map((p) => p[0]), ['Lax', 'Los Angeles', 'Laxou']);
+  eq('an alias file for another list is ignored', L.matchPlaces(toy, 'lax', 8, { n: 4, aliases: { lax: 2 } }).map((p) => p[0]), ['Lax', 'Laxou']);
+  eq('aliasRow names the row', L.aliasRow(toy, al, 'LAX, x')[0], 'Los Angeles');
+  eq('aliasRow keys on the part before the comma only', L.aliasRow(toy, { n: 3, aliases: { 'lax x': 1 } }, 'lax, x'), null);
+  eq('aliasRow with no file', L.aliasRow(toy, null, 'lax'), null); }
 eq('every fact label round-trips', facts.pairs.every((f) => L.placeLabel(L.placeByLabel(shipped.places, f.from)) === f.from
   && L.placeLabel(L.placeByLabel(shipped.places, f.to)) === f.to), true);
 eq('biggest town in a zone', L.placeLabel(L.biggestIn(shipped.places, shipped.zones, 'Europe/London')), 'London, England, United Kingdom');

@@ -297,18 +297,32 @@ export function placeLabel(p) {
 
 // The part before the first comma starts the name; each later part starts the region or
 // the country. Whole-name matches first, then the list's order (most populous first).
-export function matchPlaces(places, q, limit = 8) {
+// With aliases (data/aliases.json: an airport code or another name -> row), a query that is
+// exactly one ("lax", "bombay", "kiev, ukraine") also offers that town, after the towns
+// really called that and before the rest.
+export function matchPlaces(places, q, limit = 8, aliases = null) {
   const [head, ...rest] = String(q).split(',').map(fold);
   if (!head) return [];
+  const inRest = (p) => !rest.some((r) => r && !(fold(p[P.A1]).startsWith(r) || fold(p[P.CC]).startsWith(r)));
   const exact = [], prefix = [];
   for (const p of places) {
     const n = fold(p[P.NAME]);
     if (!n.startsWith(head)) continue;
-    if (rest.some((r) => r && !(fold(p[P.A1]).startsWith(r) || fold(p[P.CC]).startsWith(r)))) continue;
+    if (!inRest(p)) continue;
     (n === head ? exact : prefix).push(p);
     if (exact.length >= limit) break;
   }
-  return exact.concat(prefix).slice(0, limit);
+  const a = aliasRow(places, aliases, q);
+  const also = a && inRest(a) && !exact.includes(a) ? [a] : [];
+  return exact.concat(also, prefix.filter((p) => p !== a)).slice(0, limit);
+}
+
+// The row an alias names, or null. The file carries the length of the list it indexes, so a
+// stale copy or the seed list never resolves a code to whichever town now sits at that row.
+export function aliasRow(places, aliases, q) {
+  if (!aliases || aliases.n !== places.length) return null;
+  const i = aliases.aliases[fold(String(q).split(',')[0])];
+  return Number.isInteger(i) ? places[i] : null;
 }
 
 export function placeByLabel(places, label) {

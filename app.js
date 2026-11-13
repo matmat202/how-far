@@ -4,6 +4,7 @@ import * as L from './far-logic.js';
 const $ = (id) => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 let PLACES = [], ZONES = [], LAND = '';
+let ALIASES = null; // data/aliases.json: airport codes and other names -> row in places.json
 let MORE = null; // while the page runs on seed.json: what a search with no match says
 const state = { from: null, to: null };
 
@@ -118,7 +119,7 @@ function draw() {
 
 function combo(boxId, listId, onPick) {
   const box = $(boxId), ul = $(listId);
-  let opts = [], active = -1;
+  let opts = [], active = -1, hit = null, said = '';
   const close = () => { opts = []; active = -1; ul.hidden = true; box.setAttribute('aria-expanded', 'false'); box.removeAttribute('aria-activedescendant'); };
   const drawOpts = () => {
     ul.replaceChildren();
@@ -127,6 +128,7 @@ function combo(boxId, listId, onPick) {
       li.id = `${listId}${i}`; li.setAttribute('role', 'option'); li.dataset.i = i;
       li.setAttribute('aria-selected', String(i === active));
       li.textContent = L.placeLabel(p);
+      if (p === hit) { const s = document.createElement('span'); s.className = 'aka'; s.textContent = ` · ${said}`; li.append(s); }
       ul.append(li);
     });
     if (!opts.length) { const li = document.createElement('li'); li.className = 'none'; li.textContent = MORE || 'No town by that name. Try a bigger place nearby.'; ul.append(li); }
@@ -137,7 +139,10 @@ function combo(boxId, listId, onPick) {
   const pick = (p) => { close(); onPick(L.toPlace(p, ZONES)); };
   box.addEventListener('input', () => {
     if (!box.value.trim()) { close(); return; }
-    opts = L.matchPlaces(PLACES, box.value); active = opts.length ? 0 : -1; drawOpts();
+    hit = L.aliasRow(PLACES, ALIASES, box.value);
+    said = box.value.split(',')[0].trim();
+    if (said.length <= 3) said = said.toUpperCase();
+    opts = L.matchPlaces(PLACES, box.value, 8, ALIASES); active = opts.length ? 0 : -1; drawOpts();
   });
   box.addEventListener('keydown', (e) => {
     if (ul.hidden) return;
@@ -203,5 +208,7 @@ async function main() {
   wire();
   draw();
   swapIn(rest, draw);
+  // Only used once the full list is in (aliasRow checks the length); a failure loses nothing else.
+  getJSON('data/aliases.json').then((a) => { ALIASES = a; }, () => {});
 }
 main();
