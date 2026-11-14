@@ -27,7 +27,7 @@ has not, so London is 7 hours ahead of California instead of 8.
 - **Time zones:** your browser's own time-zone rules, which come from the IANA database.
 
 Towns: [GeoNames](https://www.geonames.org/) cities15000 (CC BY 4.0), every place of 15,000+
-people. The boxes also take an airport code (LHR, SFO) and the other names
+people. The comma is optional ("paris france", "austin tx"), and US state codes and UK/USA/UAE work as the region. The boxes also take an airport code (LHR, SFO) and the other names
 people use for big cities (Bombay, Kiev, Cologne, NYC): codes from
 [OurAirports](https://ourairports.com/data/) (public domain), each mapped to the town the
 airport serves, and names from GeoNames' alternate names for towns of 300,000+. Map: [Natural Earth](https://www.naturalearthdata.com/) 1:110m land (public domain).

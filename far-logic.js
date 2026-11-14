@@ -300,10 +300,46 @@ export function placeLabel(p) {
 // With aliases (data/aliases.json: an airport code or another name -> row), a query that is
 // exactly one ("lax", "bombay", "kiev, ukraine") also offers that town, after the towns
 // really called that and before the rest.
+// A region part may also be a US state's postal code ("austin, tx") or one of the short
+// country names people type ("london, uk"). A query that finds nothing is retried with its
+// last words as the region, so the comma is optional ("paris france", "austin tx").
 export function matchPlaces(places, q, limit = 8, aliases = null) {
+  const found = matchParts(places, q, limit, aliases);
+  if (found.length) return found;
+  const words = fold(q).split(' ');
+  for (let i = words.length - 1; i >= 1; i--) {
+    const more = matchParts(places, `${words.slice(0, i).join(' ')}, ${words.slice(i).join(' ')}`, limit, aliases);
+    if (more.length) return more;
+  }
+  return found;
+}
+
+// USPS state abbreviations, and DC (pe.usps.com, Publication 28, appendix B).
+const US_STATES = {
+  al: 'alabama', ak: 'alaska', az: 'arizona', ar: 'arkansas', ca: 'california', co: 'colorado',
+  ct: 'connecticut', de: 'delaware', dc: 'district of columbia', fl: 'florida', ga: 'georgia',
+  hi: 'hawaii', id: 'idaho', il: 'illinois', in: 'indiana', ia: 'iowa', ks: 'kansas',
+  ky: 'kentucky', la: 'louisiana', me: 'maine', md: 'maryland', ma: 'massachusetts',
+  mi: 'michigan', mn: 'minnesota', ms: 'mississippi', mo: 'missouri', mt: 'montana',
+  ne: 'nebraska', nv: 'nevada', nh: 'new hampshire', nj: 'new jersey', nm: 'new mexico',
+  ny: 'new york', nc: 'north carolina', nd: 'north dakota', oh: 'ohio', ok: 'oklahoma',
+  or: 'oregon', pa: 'pennsylvania', ri: 'rhode island', sc: 'south carolina', sd: 'south dakota',
+  tn: 'tennessee', tx: 'texas', ut: 'utah', vt: 'vermont', va: 'virginia', wa: 'washington',
+  wv: 'west virginia', wi: 'wisconsin', wy: 'wyoming',
+};
+const COUNTRY_SHORT = { uk: 'united kingdom', gb: 'united kingdom', us: 'united states', usa: 'united states', uae: 'united arab emirates' };
+
+function regionFits(p, r) {
+  const a1 = fold(p[P.A1]), cc = fold(p[P.CC]);
+  if (a1.startsWith(r) || cc.startsWith(r)) return true;
+  if (COUNTRY_SHORT[r] === cc) return true;
+  return cc === 'united states' && US_STATES[r] === a1;
+}
+
+function matchParts(places, q, limit, aliases) {
   const [head, ...rest] = String(q).split(',').map(fold);
   if (!head) return [];
-  const inRest = (p) => !rest.some((r) => r && !(fold(p[P.A1]).startsWith(r) || fold(p[P.CC]).startsWith(r)));
+  const inRest = (p) => !rest.some((r) => r && !regionFits(p, r));
   const exact = [], prefix = [];
   for (const p of places) {
     const n = fold(p[P.NAME]);

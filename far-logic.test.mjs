@@ -214,6 +214,19 @@ eq('a step of 180.5° is a crossing', L.splitAtDateLine([[90, 0], [-90.5, 1]]).l
 eq('"tromso" finds Tromsø', L.placeLabel(L.matchPlaces(shipped.places, 'tromso')[0]), 'Tromsø, Troms, Norway');
 eq('"wellington, new" finds the capital', L.placeLabel(L.matchPlaces(shipped.places, 'wellington, new')[0]), 'Wellington, Wellington Region, New Zealand');
 
+// --- the region without a comma, US state codes, short country names ---------------------
+const first = (q) => { const m = L.matchPlaces(shipped.places, q); return m.length ? L.placeLabel(m[0]) : 'none'; };
+for (const [q, want] of [['paris france', 'Paris, Île-de-France, France'], ['austin tx', 'Austin, Texas, United States'],
+  ['austin texas', 'Austin, Texas, United States'], ['austin, tx', 'Austin, Texas, United States'],
+  ['springfield il', 'Springfield, Illinois, United States'], ['portland, me', 'Portland, Maine, United States'],
+  ['portland or', 'Portland, Oregon, United States'], ['san jose costa rica', 'San José, Costa Rica'],
+  ['london, uk', 'London, England, United Kingdom'], ['london uk', 'London, England, United Kingdom'],
+  ['dubai uae', 'Dubai, United Arab Emirates'], ['washington dc', 'Washington, District of Columbia, United States'],
+  ['atlanta, ga', 'Atlanta, Georgia, United States'], ['new york', 'New York City, New York, United States'],
+  ['frankfurt am main', 'Frankfurt am Main, Hesse, Germany']]) eq(`"${q}" finds ${want}`, first(q), want);
+eq('a state code is a US state only: "tbilisi, ga" is not the Georgia that is a country', first('tbilisi, ga'), 'none');
+eq('nonsense still finds nothing', first('zzzq qqqz'), 'none');
+
 // --- other names and airport codes (data/aliases.json, built by build.py) ----------------
 const aliases = existsSync(here('data/aliases.json')) ? JSON.parse(readFileSync(here('data/aliases.json'), 'utf8')) : null;
 ok('shipped aliases exist and index the shipped list', aliases && aliases.n === shipped.places.length
