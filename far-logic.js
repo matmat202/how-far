@@ -300,8 +300,11 @@ export function placeLabel(p) {
 // With aliases (data/aliases.json: an airport code or another name -> row), a query that is
 // exactly one ("lax", "bombay", "kiev, ukraine") also offers that town, after the towns
 // really called that and before the rest.
-// A region part may also be a US state's postal code ("austin, tx") or one of the short
-// country names people type ("london, uk"). A query that finds nothing is retried with its
+// A region part may also be a postal code for a US state ("austin, tx"), a Canadian
+// province ("vancouver, bc") or an Australian state ("perth, wa"), or one of the short
+// country names people type ("london, uk"). A code is read only against its own country,
+// so "wa" names Washington on a US town and Western Australia on an Australian one, and
+// "tbilisi, ga" still finds nothing. A query that finds nothing is retried with its
 // last words as the region, so the comma is optional ("paris france", "austin tx").
 export function matchPlaces(places, q, limit = 8, aliases = null) {
   const found = matchParts(places, q, limit, aliases);
@@ -329,11 +332,26 @@ const US_STATES = {
 };
 const COUNTRY_SHORT = { uk: 'united kingdom', gb: 'united kingdom', us: 'united states', usa: 'united states', uae: 'united arab emirates' };
 
+// Canada Post provincial symbols and the Australia Post state abbreviations. Unlike most
+// USPS codes these are mostly NOT a prefix of the name GeoNames carries, so the
+// a1.startsWith(r) line above never reached them: "on" and "vic" happened to work
+// ("ontario", "victoria") while "bc", "ab", "qc", "nsw" and "wa" found nothing at all.
+// Each table is checked against the admin1 names actually in places.json by the suite, so
+// a GeoNames rename fails loudly instead of quietly dropping a code.
+const CA_PROVINCES = { ab: 'alberta', bc: 'british columbia', mb: 'manitoba', nb: 'new brunswick',
+  nl: 'newfoundland and labrador', ns: 'nova scotia', nt: 'northwest territories', nu: 'nunavut',
+  on: 'ontario', pe: 'prince edward island', qc: 'quebec', sk: 'saskatchewan', yt: 'yukon' };
+const AU_STATES = { act: 'australian capital territory', nsw: 'new south wales', nt: 'northern territory',
+  qld: 'queensland', sa: 'south australia', tas: 'tasmania', vic: 'victoria', wa: 'western australia' };
+
 function regionFits(p, r) {
   const a1 = fold(p[P.A1]), cc = fold(p[P.CC]);
   if (a1.startsWith(r) || cc.startsWith(r)) return true;
   if (COUNTRY_SHORT[r] === cc) return true;
-  return cc === 'united states' && US_STATES[r] === a1;
+  if (cc === 'united states') return US_STATES[r] === a1;
+  if (cc === 'canada') return CA_PROVINCES[r] === a1;
+  if (cc === 'australia') return AU_STATES[r] === a1;
+  return false;
 }
 
 function matchParts(places, q, limit, aliases) {

@@ -227,6 +227,50 @@ for (const [q, want] of [['paris france', 'Paris, Île-de-France, France'], ['au
 eq('a state code is a US state only: "tbilisi, ga" is not the Georgia that is a country', first('tbilisi, ga'), 'none');
 eq('nonsense still finds nothing', first('zzzq qqqz'), 'none');
 
+// --- Canadian and Australian region codes ------------------------------------------------
+// The pairs are written out again here rather than imported: a test that read the module's
+// own table could not catch a typo in it. Most of these codes are not a prefix of the name
+// GeoNames carries, so before 2026-11-14 only "on" and "vic" worked, and by accident.
+const CA_CODES = { ab: 'Alberta', bc: 'British Columbia', mb: 'Manitoba', nb: 'New Brunswick',
+  nl: 'Newfoundland and Labrador', ns: 'Nova Scotia', nt: 'Northwest Territories', nu: 'Nunavut',
+  on: 'Ontario', pe: 'Prince Edward Island', qc: 'Quebec', sk: 'Saskatchewan', yt: 'Yukon' };
+const AU_CODES = { act: 'Australian Capital Territory', nsw: 'New South Wales', nt: 'Northern Territory',
+  qld: 'Queensland', sa: 'South Australia', tas: 'Tasmania', vic: 'Victoria', wa: 'Western Australia' };
+for (const [q, want] of [['vancouver bc', 'Vancouver, British Columbia, Canada'],
+  ['vancouver, bc', 'Vancouver, British Columbia, Canada'], ['calgary ab', 'Calgary, Alberta, Canada'],
+  ['montreal qc', 'Montréal, Quebec, Canada'], ['toronto on', 'Toronto, Ontario, Canada'],
+  ['sydney ns', 'Sydney, Nova Scotia, Canada'], ['saskatoon sk', 'Saskatoon, Saskatchewan, Canada'],
+  ['sydney nsw', 'Sydney, New South Wales, Australia'], ['perth wa', 'Perth, Western Australia, Australia'],
+  ['brisbane qld', 'Brisbane, Queensland, Australia'], ['adelaide sa', 'Adelaide, South Australia, Australia'],
+  ['hobart tas', 'Hobart, Tasmania, Australia'], ['canberra act', 'Canberra, Australian Capital Territory, Australia'],
+  ['melbourne vic', 'Melbourne, Victoria, Australia'], ['darwin nt', 'Darwin, Northern Territory, Australia'],
+  ['seattle wa', 'Seattle, Washington, United States']]) eq(`"${q}" finds ${want}`, first(q), want);
+// A code is read only against its own country, so the three tables cannot bleed into each
+// other: "wa" is Washington on a US town and Western Australia on an Australian one.
+eq('a Canadian code is Canada only: "houston ab" is not the Texan one', first('houston ab'), 'none');
+eq('an Australian code is Australia only: "austin nsw" finds nothing', first('austin nsw'), 'none');
+eq('a US code is the US only: "hamilton oh" is Ohio, not the bigger Ontario one', first('hamilton oh'), 'Hamilton, Ohio, United States');
+eq('and the Canadian code picks the other: "hamilton on"', first('hamilton on'), 'Hamilton, Ontario, Canada');
+eq('"victoria bc" is the island one, "victoria tx" the Texan', `${first('victoria bc')} / ${first('victoria tx')}`,
+  'Victoria, British Columbia, Canada / Victoria, Texas, United States');
+eq('"vancouver wa" is the Washington one, not British Columbia', first('vancouver wa'), 'Vancouver, Washington, United States');
+// Every province and state the shipped list actually carries must have a code, or a
+// GeoNames rename would drop one silently.
+for (const [cc, codes] of [['Canada', CA_CODES], ['Australia', AU_CODES]]) {
+  const have = new Set(Object.values(codes));
+  const missing = [...new Set(shipped.places.filter((p) => p[2] === cc).map((p) => p[1]))].filter((a) => !have.has(a));
+  eq(`every ${cc} region in the shipped list has a code`, missing, []);
+}
+// "wa" is the one code two of the tables share. No town name collides today — asserted, so
+// that a future one cannot slip in unseen — and if one ever does, the list's own order
+// decides, most populous first, as it does everywhere else on the page.
+{ const nm = (cc, a1) => new Set(shipped.places.filter((p) => p[2] === cc && p[1] === a1).map((p) => p[0]));
+  const both = [...nm('United States', 'Washington')].filter((n) => nm('Australia', 'Western Australia').has(n));
+  eq('no town name is in both Washington and Western Australia', both, []);
+  const toy = [['Perth', 'Western Australia', 'Australia', 0, 0, 9, 0], ['Perth', 'Washington', 'United States', 0, 0, 1, 0]];
+  eq('if one ever is, both are offered, most populous first',
+    L.matchPlaces(toy, 'perth, wa').map((p) => `${p[0]}, ${p[1]}`), ['Perth, Western Australia', 'Perth, Washington']); }
+
 // --- other names and airport codes (data/aliases.json, built by build.py) ----------------
 const aliases = existsSync(here('data/aliases.json')) ? JSON.parse(readFileSync(here('data/aliases.json'), 'utf8')) : null;
 ok('shipped aliases exist and index the shipped list', aliases && aliases.n === shipped.places.length
@@ -238,6 +282,17 @@ for (const [q, want] of [['lhr', 'London, England, United Kingdom'], ['JFK', 'Ne
   ['cologne', 'Köln, North Rhine-Westphalia, Germany'], ['lisboa', 'Lisbon, Portugal'], ['saigon', 'Ho Chi Minh City, Ho Chi Minh City (HCMC), Vietnam'],
   ['kiev, ukr', 'Kyiv, Kyiv City, Ukraine']]) eq(`"${q}" finds ${q.length > 3 ? 'the town by its other name' : 'the town it serves'}`, top(q), want);
 eq('without the alias file "lhr" finds nothing', L.matchPlaces(shipped.places, 'lhr').length, 0);
+// Hand aliases (build.py HAND_ALIASES): names GeoNames has no usable alternate for. "D.C."
+// is in GeoNames but folds to "d c", so the spaced form worked and the typed one did not.
+for (const [q, want] of [['dc', 'Washington, District of Columbia, United States'],
+  ['DC', 'Washington, District of Columbia, United States'],
+  ['d c', 'Washington, District of Columbia, United States'],
+  ['bay area', 'San Francisco, California, United States'],
+  ['silicon valley', 'San Jose, California, United States'],
+  ['beantown', 'Boston, Massachusetts, United States']]) eq(`"${q}" finds ${want}`, top(q), want);
+eq('a hand alias still honours the region: "dc, canada"', top('dc, canada'), 'none, ');
+eq('"washington" itself is still the town, not routed through the alias', top('washington'),
+  'Washington, District of Columbia, United States');
 { const la = L.matchPlaces(shipped.places, 'la', 8, aliases).map(L.placeLabel);
   ok('"la" offers Los Angeles before Lagos', la.indexOf('Los Angeles, California, United States') >= 0
     && la.indexOf('Los Angeles, California, United States') < la.indexOf('Lagos, Nigeria'), JSON.stringify(la)); }
