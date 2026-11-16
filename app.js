@@ -6,6 +6,7 @@ const NS = 'http://www.w3.org/2000/svg';
 let PLACES = [], ZONES = [], LAND = '';
 let ALIASES = null; // data/aliases.json: airport codes and other names -> row in places.json
 let MORE = null; // while the page runs on seed.json: what a search with no match says
+let FULL = null; // resolves once PLACES is the full list (the seed would give the zone's biggest city)
 const state = { from: null, to: null };
 
 function sync() {
@@ -158,14 +159,34 @@ function combo(boxId, listId, onPick) {
 }
 
 function wire() {
-  combo('from', 'fromList', (p) => { state.from = p; $('from').value = p.label; draw(); });
+  combo('from', 'fromList', (p) => { state.from = p; $('from').value = p.label; $('hereNote').textContent = ''; draw(); });
   combo('to', 'toList', (p) => { state.to = p; $('to').value = p.label; draw(); });
   $('swap').addEventListener('click', () => {
     [state.from, state.to] = [state.to, state.from];
+    $('hereNote').textContent = '';
     $('from').value = state.from.label; $('to').value = state.to.label;
     draw();
   });
+  if ('geolocation' in navigator) { $('here').hidden = false; $('here').addEventListener('click', here); }
   setInterval(clocks, 20000);
+}
+
+// "Where I am": the browser's position -> the nearest town in the full list -> From.
+function here() {
+  const note = $('hereNote');
+  note.textContent = 'Finding where you are…';
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const c = pos.coords, fix = { lat: c.latitude, lon: c.longitude };
+    FULL.then(() => {
+      const n = L.nearest(PLACES, fix);
+      state.from = L.toPlace(n.p, ZONES); $('from').value = state.from.label;
+      note.textContent = L.hereWords(n, c.accuracy);
+      draw();
+    }, () => { note.textContent = 'Could not load the full list of towns to find yours. Reload to try again.'; });
+  }, (e) => {
+    note.textContent = e.code === 1 ? 'Your browser was not allowed to say where you are. Type your town instead, or allow location for this site.'
+      : 'Your browser could not tell where you are just now. Type your town instead.';
+  }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
 }
 
 // The first screen draws from data/seed.json (the biggest town in each zone plus the
@@ -208,6 +229,8 @@ async function main() {
   wire();
   draw();
   swapIn(rest, draw);
+  // After swapIn: handlers on one promise run in order, so PLACES is already the full list here.
+  FULL = rest ? rest.then(() => {}) : Promise.resolve();
   // Only used once the full list is in (aliasRow checks the length); a failure loses nothing else.
   getJSON('data/aliases.json').then((a) => { ALIASES = a; }, () => {});
 }

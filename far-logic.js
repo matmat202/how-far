@@ -102,6 +102,16 @@ export function nearest(places, pt) {
   return { p: best, km: bestKm };
 }
 
+// "Where I am": the browser's position becomes the nearest town in the list, because
+// every other line on the page (clocks, zone, the URL) needs a town. Said plainly, so a
+// reader 30 km out of town knows the distance is measured from that town's centre.
+// fix: {lat, lon, acc} (acc in metres); n: nearest(places, fix).
+export function hereWords(n, acc) {
+  const name = placeLabel(n.p);
+  const rough = acc > 5000 ? ` Your browser only knows where you are to about ${dist(acc / 1000).km}, so check it.` : '';
+  return (n.km < 3 ? `Measuring from ${name}, where you are.` : `Measuring from ${name}, the nearest town to you, ${dist(n.km).km} away.`) + rough;
+}
+
 const POINTS = ['north', 'north-northeast', 'northeast', 'east-northeast', 'east', 'east-southeast', 'southeast',
   'south-southeast', 'south', 'south-southwest', 'southwest', 'west-southwest', 'west', 'west-northwest', 'northwest',
   'north-northwest'];

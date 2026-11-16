@@ -413,5 +413,18 @@ ok('flown extra never falls as the trip gets longer',
   ok('wind vs BTS SEA-MIA stays weak (the caveat holds)', sm.n === 30 && sm.r < 0.6, JSON.stringify(sm));
 }
 
+// --- "Where I am" -------------------------------------------------------------------------
+{
+  const n = (km) => ({ p: shipped.places.find((r) => L.placeLabel(r) === 'Palo Alto, California, United States'), km });
+  eq('here: in town says so', L.hereWords(n(1.5), 20), 'Measuring from Palo Alto, California, United States, where you are.');
+  eq('here: 3 km out says how far', L.hereWords(n(3.04), 20), `Measuring from Palo Alto, California, United States, the nearest town to you, 3.0 km away.`);
+  eq('here: just under 3 km is still in town', L.hereWords(n(2.99), 20), 'Measuring from Palo Alto, California, United States, where you are.');
+  eq('here: 35 km out', L.hereWords(n(35.04), 20), `Measuring from Palo Alto, California, United States, the nearest town to you, 35 km away.`);
+  eq('here: a rough fix is flagged', L.hereWords(n(1), 12000), `Measuring from Palo Alto, California, United States, where you are. Your browser only knows where you are to about 12 km, so check it.`);
+  eq('here: 5 km of accuracy is not flagged', L.hereWords(n(1), 5000), 'Measuring from Palo Alto, California, United States, where you are.');
+  // A real fix: University Ave, Palo Alto, and the Stanford Oval (2.9 km out).
+  eq('here: a Palo Alto fix finds Palo Alto', L.placeLabel(L.nearest(shipped.places, { lat: 37.4443, lon: -122.1598 }).p), 'Palo Alto, California, United States');
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
