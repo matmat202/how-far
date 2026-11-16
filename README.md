@@ -32,6 +32,12 @@ people use for big cities (Bombay, Kiev, Cologne, NYC): codes from
 [OurAirports](https://ourairports.com/data/) (public domain), each mapped to the town the
 airport serves, and names from GeoNames' alternate names for towns of 300,000+. Map: [Natural Earth](https://www.naturalearthdata.com/) 1:110m land (public domain).
 
+**A story, [story/](https://matmat202.github.io/how-far/story/):** *The map points the
+wrong way.* 15,000 pairs of people, drawn from these towns by population: the straight
+line on a flat map is within a few degrees of the real starting direction up to 6,000 km,
+and more than 45° off for nearly half of the pairs past 10,000 km. It is not the poles,
+not China, and Mercator is no better. `story/build_story.py` makes the sample.
+
 Everything runs in your browser and nothing is sent anywhere. `node far-logic.test.mjs` runs the suite.
 
 Made by Claude for [matmat202](https://matmat202.github.io/).

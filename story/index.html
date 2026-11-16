@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The map points the wrong way · How Far?, a story</title>
+<meta name="description" content="A story from How Far?: of 15,000 pairs of people drawn from 31,807 towns, the straight line on a flat map points within a few degrees of the real way to set off up to 6,000 km, and never 45° wrong. Past 10,000 km it is more than 45° wrong for nearly half of them. Delhi to Mexico City looks west and starts north. Not the poles, not China, and not the map: Mercator is as wrong.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="plot" aria-hidden="true"></div>
+<p id="err" role="alert"></p>
+<main>
+
+<section class="step" data-step="dist"><div>
+  <p class="kicker">How Far? · a story</p>
+  <h1>The map points the wrong way</h1>
+  <p>Draw a line between two towns on a flat map, and it seems to say which way to go. Does it?</p>
+  <p>I drew <b data-fact="n_pairs"></b> pairs of people from the <b data-fact="n_towns"></b>
+  towns <a href="../">How Far?</a> knows, which hold <b data-fact="billion"></b> people,
+  each town as often as it has people. The grey is the pairs, by how far apart they are;
+  the red dot is the middle pair, <b data-fact="median_km"></b> apart.</p>
+  <p>Two strangers are a long way apart: only <b data-fact="dom"></b> live in the same
+  country, and <b data-fact="over10k"></b>, <span class="w">almost one pair in three</span>,
+  are more than 10,000 km apart. That is where the map starts to lie.</p>
+  <p class="small"><span class="k up">the middle pair</span> <span class="k down">pairs of people, by distance</span> · Scroll ↓</p>
+</div></section>
+
+<section class="step" data-step="off"><div>
+  <p class="kicker">Chapter 1 · Fine, until it is not</p>
+  <h2>Right up to 6,000 km, then wrong half the time</h2>
+  <p>For each pair I compared the straight line on How Far?’s map with the direction the
+  shortest route really sets off in. Under 3,000 km the middle pair’s line is off by
+  <b data-fact="under3k_median_off"></b>. Of the <b data-fact="under6k_n"></b> pairs under
+  6,000 km, <span class="w">not one</span> is off by more than 45°.</p>
+  <p>Then it goes. Past 10,000 km the line is more than 45° wrong for
+  <b data-fact="over10k_off45"></b> of pairs, and past 12,000 km for
+  <b data-fact="over12k_off45"></b>. Over all the pairs, that is
+  <b data-fact="off45"></b>: <span class="w">one pair in six</span>.</p>
+  <p>Delhi to Mexico City <span class="w">looks west and sets off north</span>. New York
+  to Shanghai looks west too, and starts north-northwest, over Canada and the Arctic.</p>
+</div></section>
+
+<section class="step" data-step="flip"><div>
+  <p class="kicker">Chapter 2 · The wrong half of the compass</p>
+  <h2>The map says south, the plane goes north</h2>
+  <p>A line 45° off still heads the right way, roughly. Sometimes the map gets even that
+  wrong: its line leans south and the real route leans north, or the other way round,
+  each by 10° or more. That is <b data-fact="flip"></b> of pairs,
+  <span class="w">about one in sixteen</span>, and <b data-fact="over15k_flip"></b> of
+  those more than 15,000 km apart.</p>
+  <p>Shanghai to São Paulo is one: on the map, west-southwest; in the air, it leaves
+  heading northwest.</p>
+</div></section>
+
+<section class="step" data-step="off"><div>
+  <p class="kicker">Chapter 3 · Three ways it could be wrong</p>
+  <h2>Not the poles, not China, not this map</h2>
+  <p><b>The poles?</b> Near them every map stretches. Keep only pairs with both ends
+  within 45° of the equator, and the line is still more than 45° off for
+  <b data-fact="off45:eq"></b>: <span class="w">the same, give or take a point</span>.</p>
+  <p><b>China?</b> More people in these towns live there than in any other country, so a lot of pairs
+  start there. Leave out every pair with a Chinese end: <b data-fact="off45:nochina"></b>.
+  Past 12,000 km it drops to <b data-fact="over12k_off45:nochina"></b>, so
+  <span class="w">China pushes the far end up, not the whole</span>.</p>
+  <p><b>This map?</b> How Far? draws longitude across and latitude up. Web maps use
+  Mercator, where a straight line is a rhumb line. It is more than 45° off for
+  <b data-fact="merc45"></b>: <span class="w">no better</span>. No flat map can be right
+  both ways; the Earth is not flat.</p>
+</div></section>
+
+<section class="step" data-step="off"><div>
+  <p class="kicker">Epilogue · Reading the map on How Far?</p>
+  <h2>Trust the orange line</h2>
+  <p>On <a href="../">How Far?</a>, the dashed grey line is the straight one, and the
+  orange one is the shortest route. For a trip of a few thousand kilometres they nearly
+  agree; for the other side of the world, “to set off in” is the one to believe.</p>
+  <p class="small">Data: the site’s own <a href="https://www.geonames.org/">GeoNames</a>
+  <code>cities15000</code> towns (CC BY 4.0), <b data-fact="n_towns"></b> of them, each
+  drawn as often as its GeoNames population, a pair from one town drawn again. The towns
+  are not everyone: villages and towns under 15,000 people are left out, and
+  <b data-fact="n_pairs"></b> pairs are a sample, good to about a point either way. The
+  starting direction is the page’s own (Vincenty’s formula on WGS84); the map’s line goes
+  the short way round, as the page draws it. The program is
+  <a href="https://github.com/matmat202/how-far/blob/main/story/build_story.py">in the
+  repository</a>.</p>
+</div></section>
+
+</main>
+<script type="module" src="story.js"></script>
+</body>
+</html>
