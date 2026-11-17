@@ -394,6 +394,15 @@ export function placeByLabel(places, label) {
   return places.find((p) => fold(placeLabel(p)) === f) || null;
 }
 
+// The town a link names. The page writes full labels, but people type links by hand and
+// paste them from elsewhere: ?from=London&to=Sydney, ?from=sfo. An exact label wins, then
+// the first town the search box would offer for the same words. Null if it offers none,
+// so the page can say so rather than open on a route nobody asked for.
+export function placeForLink(places, label, aliases = null) {
+  if (!label) return null;
+  return placeByLabel(places, label) || matchPlaces(places, label, 1, aliases)[0] || null;
+}
+
 // The biggest town in a time zone: where the page starts when nothing else says.
 export function biggestIn(places, zones, tz) {
   const i = zones.indexOf(tz);

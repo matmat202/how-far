@@ -215,15 +215,23 @@ function swapIn(rest, redraw) {
 
 async function main() {
   const want = L.decodeState(location.search);
+  const aliases = getJSON('data/aliases.json').catch(() => null);
   let doc, rest, land;
   try { [[doc, rest], land] = await Promise.all([loadPlaces([want.from, want.to]), getJSON('data/land.json')]); } catch (e) { $('mi').textContent = `Could not load the list of towns (${e.message}). Reload to try again.`; return; }
   PLACES = doc.places; ZONES = doc.zones; LAND = land.land;
   const find = (label) => { const p = label && L.placeByLabel(PLACES, label); return p ? L.toPlace(p, ZONES) : null; };
+  // A hand-typed link (?from=London&to=sfo) is not a full label: read it the way the search
+  // box would, airport codes included. loadPlaces has already waited for the full list.
+  const loose = [want.from, want.to].some((l) => l && !find(l));
+  if (loose) ALIASES = await aliases;
+  const link = (label) => { const p = L.placeForLink(PLACES, label, ALIASES); return p ? L.toPlace(p, ZONES) : null; };
   let mine = null;
   try { mine = L.biggestIn(PLACES, ZONES, Intl.DateTimeFormat().resolvedOptions().timeZone); } catch { /* no zone */ }
   const london = find('London, England, United Kingdom');
-  state.from = find(want.from) || (mine && L.toPlace(mine, ZONES)) || london;
-  state.to = find(want.to) || (state.from.label === london.label ? find('New York City, New York, United States') : london);
+  state.from = link(want.from) || (mine && L.toPlace(mine, ZONES)) || london;
+  state.to = link(want.to) || (state.from.label === london.label ? find('New York City, New York, United States') : london);
+  const lost = [want.from, want.to].filter((l) => l && !link(l));
+  if (lost.length) $('hereNote').textContent = `The link names ${lost.map((l) => `“${l}”`).join(' and ')}, which no town here matches, so a default town stands in. Type a town to change it.`;
   $('from').value = state.from.label;
   $('to').value = state.to.label;
   wire();
@@ -232,6 +240,6 @@ async function main() {
   // After swapIn: handlers on one promise run in order, so PLACES is already the full list here.
   FULL = rest ? rest.then(() => {}) : Promise.resolve();
   // Only used once the full list is in (aliasRow checks the length); a failure loses nothing else.
-  getJSON('data/aliases.json').then((a) => { ALIASES = a; }, () => {});
+  aliases.then((a) => { ALIASES = a; });
 }
 main();

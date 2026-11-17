@@ -426,5 +426,22 @@ ok('flown extra never falls as the trip gets longer',
   eq('here: a Palo Alto fix finds Palo Alto', L.placeLabel(L.nearest(shipped.places, { lat: 37.4443, lon: -122.1598 }).p), 'Palo Alto, California, United States');
 }
 
+// --- links typed by hand: ?from=London&to=Sydney (placeForLink) ------------------------
+{ const link = (q, al = aliases) => L.placeLabel(L.placeForLink(shipped.places, q, al) || ['none', '', '']);
+  eq('link: a full label is kept', link('Palo Alto, California, United States'), 'Palo Alto, California, United States');
+  eq('link: a full label beats the bigger namesake', link('London, Ontario, Canada'), 'London, Ontario, Canada');
+  // A name with a comma in it: the search box cannot find this one from its own label, so only
+  // the exact-label step can (and a loose match tried first would lose it).
+  eq('link: a full label the search cannot parse', link('Mianzhu, Deyang, Sichuan, Sichuan, China'), 'Mianzhu, Deyang, Sichuan, Sichuan, China');
+  eq('link: a bare name takes the town the box would offer', link('London'), 'London, England, United Kingdom');
+  eq('link: "Sydney" is the Australian one', link('Sydney'), 'Sydney, New South Wales, Australia');
+  eq('link: lower case and no comma', link('paris france'), 'Paris, Île-de-France, France');
+  eq('link: an airport code', link('sfo'), top('sfo'));
+  ok('link: the airport code is a real town', link('sfo') !== 'none, ' && /California/.test(link('sfo')), link('sfo'));
+  eq('link: a region code', link('perth wa'), 'Perth, Western Australia, Australia');
+  eq('link: a name nothing matches is null', L.placeForLink(shipped.places, 'Nowhereville', aliases), null);
+  eq('link: empty is null', L.placeForLink(shipped.places, null, aliases), null);
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
