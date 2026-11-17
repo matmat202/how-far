@@ -426,6 +426,17 @@ ok('flown extra never falls as the trip gets longer',
   eq('here: a Palo Alto fix finds Palo Alto', L.placeLabel(L.nearest(shipped.places, { lat: 37.4443, lon: -122.1598 }).p), 'Palo Alto, California, United States');
 }
 
+// --- labels that fold alike: each must still round-trip ---------------------------------
+{ const groups = new Map();
+  for (const p of shipped.places) { const f = L.fold(L.placeLabel(p)); groups.set(f, (groups.get(f) || []).concat([p])); }
+  const twins = [...groups.values()].filter((g) => g.length > 1 && new Set(g.map(L.placeLabel)).size > 1).flat();
+  ok('twins: some labels differ only by accents (or this sweep is vacuous)', twins.length >= 10, twins.length);
+  const off = twins.filter((p) => L.placeLabel(L.placeByLabel(shipped.places, L.placeLabel(p))) !== L.placeLabel(p));
+  eq('twins: every accented twin round-trips through its own label', off.map(L.placeLabel), []);
+  eq('twins: "Kāshān" is not "Kashan"', L.placeLabel(L.placeByLabel(shipped.places, 'Kāshān, Isfahan, Iran')), 'Kāshān, Isfahan, Iran');
+  eq('twins: a typed label without accents still finds a town', !!L.placeByLabel(shipped.places, 'kashan, isfahan, iran'), true);
+}
+
 // --- links typed by hand: ?from=London&to=Sydney (placeForLink) ------------------------
 { const link = (q, al = aliases) => L.placeLabel(L.placeForLink(shipped.places, q, al) || ['none', '', '']);
   eq('link: a full label is kept', link('Palo Alto, California, United States'), 'Palo Alto, California, United States');

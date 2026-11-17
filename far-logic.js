@@ -389,7 +389,11 @@ export function aliasRow(places, aliases, q) {
   return Number.isInteger(i) ? places[i] : null;
 }
 
+// The exact label first: 20 towns fold to the same label as a bigger twin ("Kāshān" and
+// "Kashan", both Isfahan, Iran), and a link the page wrote for one reopened on the other.
 export function placeByLabel(places, label) {
+  const exact = places.find((p) => placeLabel(p) === label);
+  if (exact) return exact;
   const f = fold(label);
   return places.find((p) => fold(placeLabel(p)) === f) || null;
 }
