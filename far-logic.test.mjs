@@ -422,6 +422,10 @@ ok('flown extra never falls as the trip gets longer',
   eq('here: 35 km out', L.hereWords(n(35.04), 20), `Measuring from Palo Alto, California, United States, the nearest town to you, 35 km away.`);
   eq('here: a rough fix is flagged', L.hereWords(n(1), 12000), `Measuring from Palo Alto, California, United States, where you are. Your browser only knows where you are to about 12 km, so check it.`);
   eq('here: 5 km of accuracy is not flagged', L.hereWords(n(1), 5000), 'Measuring from Palo Alto, California, United States, where you are.');
+  // both thresholds at their exact boundary: 2.99 and 3.04 straddle "3 km out" without
+  // landing on it, and 5000 is the last unflagged accuracy, so neither < nor > was pinned
+  eq('here: exactly 3 km is out of town, not in it', L.hereWords(n(3), 20), 'Measuring from Palo Alto, California, United States, the nearest town to you, 3.0 km away.');
+  eq('here: one metre past 5 km of accuracy is flagged', L.hereWords(n(1), 5001), 'Measuring from Palo Alto, California, United States, where you are. Your browser only knows where you are to about 5.0 km, so check it.');
   // A real fix: University Ave, Palo Alto, and the Stanford Oval (2.9 km out).
   eq('here: a Palo Alto fix finds Palo Alto', L.placeLabel(L.nearest(shipped.places, { lat: 37.4443, lon: -122.1598 }).p), 'Palo Alto, California, United States');
 }
