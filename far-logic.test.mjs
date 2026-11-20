@@ -65,7 +65,10 @@ for (const f of facts.antipodes) {
 for (const f of facts.long) {
   const m = L.measure(pt(...f.a), pt(...f.b));
   ok(`long ${f.a}/${f.b}: exact`, m.exact === true);
-  near(`long ${f.a}/${f.b}: km to half a millimetre`, m.km, f.km, 5e-7);
+  // To one grain of the fixture (km to 7 places = 0.1 mm), not Vincenty's general 0.5 mm:
+  // here it sits 0.016 mm from GeographicLib, and at 0.5 mm its u2^3 constant (320 -> 321,
+  // 0.37 mm on this pair) changed unseen (2026-11-19).
+  near(`long ${f.a}/${f.b}: km to a tenth of a millimetre`, m.km, f.km, 1e-7);
   ok(`long ${f.a}/${f.b}: bearing to 1e-7°`, bearingGap(m.bearing, f.bearing) < 1e-7, `${m.bearing} vs ${f.bearing}`);
 }
 ok('a long pair to check', facts.long.length > 0);
