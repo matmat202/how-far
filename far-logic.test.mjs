@@ -96,8 +96,8 @@ near('nearest says how far', L.nearest(tiny, pt(10.5, 10)).km, 0, 1e-9);
 // --- words ------------------------------------------------------------------------------
 eq('compass points', [0, 11.2, 11.3, 90, 303.58, 359, -10, 180].map(L.compass),
   ['north', 'north', 'north-northeast', 'east', 'west-northwest', 'north', 'north', 'south']);
-eq('flight times', [L.flightMin(150), L.flightMin(199.9), L.flightMin(200), L.flightMin(4000), L.flightMin(8330.2)],
-  [null, null, 60, 340, 625]);
+eq('flight times', [L.flightMin(50), L.flightMin(99.9), L.flightMin(100), L.flightMin(150), L.flightMin(199.9), L.flightMin(200), L.flightMin(4000), L.flightMin(8330.2)],
+  [null, null, 50, 55, 60, 60, 340, 625]);
 eq('the wind: east is quicker in the belt, either hemisphere, and not in the tropics',
   [L.flightMin(4000, 90, 40, 40), L.flightMin(4000, 270, 40, 40), L.flightMin(4000, 90, -40, -40), L.flightMin(4000, 90, 10, 10), L.flightMin(4000, 90, 10, 40)],
   [325, 350, 325, 340, 330]);

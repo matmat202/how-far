@@ -101,7 +101,7 @@ function draw() {
   $('headingSub').textContent = `${Math.round(m.bearing) % 360}° as you leave ${L.short(a.label)}`;
   const f = L.flightMin(m.km, m.bearing, a.lat, b.lat), back = L.flightMin(m.km, L.measure(b, a).bearing, b.lat, a.lat);
   $('fly').textContent = f == null ? 'too close' : `${L.hm(f)}`;
-  $('flySub').textContent = f == null ? 'to fly' : back - f >= 15 ? `scheduled, nonstop · ${L.hm(back)} coming back, against the wind`
+  $('flySub').textContent = f == null ? 'under 100\u00a0km, to time a flight' : back - f >= 15 ? `scheduled, nonstop · ${L.hm(back)} coming back, against the wind`
     : f - back >= 15 ? `scheduled, nonstop, into the wind · ${L.hm(back)} coming back` : 'scheduled, nonstop';
   const x = f == null ? null : L.flownExtra(m.km);
   $('flown').textContent = x == null ? '' : `An airliner actually flies about ${L.dist(m.km + x).km}, ${L.dist(Math.round(x / 5) * 5).km} more than this,`
