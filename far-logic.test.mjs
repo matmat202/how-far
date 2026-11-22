@@ -444,6 +444,32 @@ ok('flown extra never falls as the trip gets longer',
   eq('twins: a typed label without accents still finds a town', !!L.placeByLabel(shipped.places, 'kashan, isfahan, iran'), true);
 }
 
+// --- two towns, one label: the smaller is hinted with a neighbour (build.py's near()) ----
+// Before this, the second Hayes could be seen in the list but never picked, kept or shared:
+// every label resolved to the bigger one. Its own line, its own ?from=/?to= link.
+{ const labels = shipped.places.map(L.placeLabel);
+  const dup = labels.filter((l, i) => labels.indexOf(l) !== i);
+  eq('shipped: no two towns share a label', [dup.length, dup.slice(0, 3)], [0, []]);
+  const hayes = L.matchPlaces(shipped.places, 'hayes, england').map(L.placeLabel).filter((l) => l.startsWith('Hayes'));
+  eq('shipped: both Hayes listed, the smaller with its neighbour', hayes,
+    ['Hayes, England, United Kingdom', 'Hayes (near Beckenham), England, United Kingdom']);
+  const small = shipped.places.find((p) => p[L.P.NAME] === 'Hayes' && p[L.P.NEAR]);
+  eq('link: the hinted label opens that town, not its namesake',
+    L.placeForLink(shipped.places, 'Hayes (near Beckenham), England, United Kingdom', aliases), small);
+  eq('link: the bare label still opens the bigger one, as old links did',
+    L.placeForLink(shipped.places, 'Hayes, England, United Kingdom', aliases)[L.P.POP], 93928);
+  ok('shipped: a hint is a real town of the same country',
+    shipped.places.every((p) => !p[L.P.NEAR] || shipped.places.some((o) => o[L.P.NAME] === p[L.P.NEAR] && o[L.P.CC] === p[L.P.CC])), true);
+  // How this site differs from projects/daylight, which keys the same rule on the FOLDED
+  // label: here placeByLabel matches the exact label first, so the 20 accent-twins above
+  // are already told apart and must NOT be hinted. Keying near() on fold() hints all 20.
+  ok('shipped: enough towns are hinted for the checks above to mean something',
+    shipped.places.filter((p) => p[L.P.NEAR]).length >= 50, shipped.places.filter((p) => p[L.P.NEAR]).length);
+  eq('shipped: an accent-twin is not hinted -- it was never ambiguous here',
+    shipped.places.filter((p) => L.fold(p[L.P.NAME]) === 'kashan').map(L.placeLabel),
+    ['Kashan, Isfahan, Iran', 'Kāshān, Isfahan, Iran']);
+}
+
 // --- links typed by hand: ?from=London&to=Sydney (placeForLink) ------------------------
 { const link = (q, al = aliases) => L.placeLabel(L.placeForLink(shipped.places, q, al) || ['none', '', '']);
   eq('link: a full label is kept', link('Palo Alto, California, United States'), 'Palo Alto, California, United States');

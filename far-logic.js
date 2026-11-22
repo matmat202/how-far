@@ -281,7 +281,7 @@ export function clock(ms, tz) {
 // ---- places: [name, admin1, country, lat, lon, pop, tzIndex], most populous first ------
 // Copied from projects/daylight/site/sun-logic.js, which shares the data file.
 
-export const P = { NAME: 0, A1: 1, CC: 2, LAT: 3, LON: 4, POP: 5, TZ: 6 };
+export const P = { NAME: 0, A1: 1, CC: 2, LAT: 3, LON: 4, POP: 5, TZ: 6, NEAR: 7 };
 
 // Letters NFD does not take apart: "tromso" has to find the slashed o of Tromso, "lodz" the barred l of Lodz.
 const LETTERS = { 'ø': 'o', 'æ': 'ae', 'œ': 'oe', 'ß': 'ss', 'ł': 'l', 'đ': 'd', 'ð': 'd', 'þ': 'th', 'ı': 'i', 'ħ': 'h' };
@@ -300,8 +300,12 @@ export function fold(s) {
   return v;
 }
 
+// Two towns can carry one name in one region (two Hayes in England). build.py gives the
+// smaller of a colliding pair a NEAR field -- a bigger neighbour's name -- so each town is
+// its own line, its own link and its own share. The biggest namesake keeps the bare label,
+// so links made before this still open the town they opened then.
 export function placeLabel(p) {
-  const parts = [p[P.NAME]];
+  const parts = [p[P.NEAR] ? `${p[P.NAME]} (near ${p[P.NEAR]})` : p[P.NAME]];
   if (p[P.A1] && p[P.A1] !== p[P.NAME]) parts.push(p[P.A1]);
   parts.push(p[P.CC]);
   return parts.join(', ');
