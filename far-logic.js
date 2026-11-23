@@ -2,8 +2,9 @@
 //
 // Distance and the starting bearing are Vincenty's inverse formula on the WGS84 ellipsoid,
 // the shape GPS uses; the suite checks them against GeographicLib (Karney) to the metre.
-// Vincenty does not converge for a few nearly antipodal pairs, and there it falls back to
-// the sphere, which is within 0.5%. The route drawn and the halfway point are on the
+// Vincenty does not converge for nearly antipodal pairs; there antipodal() aims the direct
+// formula instead (aimed: true), and only if that misses too is it the sphere (exact: false).
+// The route drawn and the halfway point are on the
 // sphere: at map scale nobody can see the difference.
 
 const RAD = Math.PI / 180, DEG = 180 / Math.PI;
@@ -20,7 +21,7 @@ export function sphere(a, b) {
   return { km, bearing: (Math.atan2(y, x) * DEG + 360) % 360 };
 }
 
-// Vincenty inverse on WGS84: { km, bearing, exact }. exact=false means the sphere was used.
+// Vincenty inverse on WGS84: { km, bearing, exact[, aimed] }. exact=false means the sphere was used.
 export function measure(a, b) {
   const L = (b.lon - a.lon) * RAD;
   const U1 = Math.atan((1 - F) * Math.tan(a.lat * RAD)), U2 = Math.atan((1 - F) * Math.tan(b.lat * RAD));
@@ -48,7 +49,52 @@ export function measure(a, b) {
       return { km: (B * k1 * (sigma - dS)) / 1000, bearing: (az + 360) % 360, exact: true };
     }
   }
-  return { ...sphere(a, b), exact: false };
+  return antipodal(a, b) || { ...sphere(a, b), exact: false };
+}
+
+// Vincenty's direct formula, run by the arc sig on the auxiliary sphere rather than by the
+// distance: where the geodesic leaving latitude U1 (reduced) at azimuth a1 is after sig, and
+// how far that is in metres.
+function direct(U1, a1, sig) {
+  const sU1 = Math.sin(U1), cU1 = Math.cos(U1), sa1 = Math.sin(a1), ca1 = Math.cos(a1);
+  const s1 = Math.atan2(Math.tan(U1), ca1), sinA = cU1 * sa1, cos2a = 1 - sinA * sinA;
+  const ss = Math.sin(sig), cs = Math.cos(sig), c2m = Math.cos(2 * s1 + sig);
+  const lat = Math.atan2(sU1 * cs + cU1 * ss * ca1, (1 - F) * Math.hypot(sinA, sU1 * ss - cU1 * cs * ca1));
+  const lam = Math.atan2(ss * sa1, cU1 * cs - sU1 * ss * ca1);
+  const C = (F / 16) * cos2a * (4 + F * (4 - 3 * cos2a));
+  const lon = lam - (1 - C) * F * sinA * (sig + C * ss * (c2m + C * cs * (-1 + 2 * c2m * c2m)));
+  const u2 = (cos2a * (A * A - B * B)) / (B * B);
+  const k1 = 1 + (u2 / 16384) * (4096 + u2 * (-768 + u2 * (320 - 175 * u2)));
+  const k2 = (u2 / 1024) * (256 + u2 * (-128 + u2 * (74 - 47 * u2)));
+  const dS = k2 * ss * (c2m + (k2 / 4) * (cs * (-1 + 2 * c2m * c2m) - (k2 / 6) * c2m * (-3 + 4 * ss * ss) * (-3 + 4 * c2m * c2m)));
+  return { lat, lon, m: B * k1 * (sig - dS) };
+}
+
+// Where Vincenty's inverse gives up (nearly antipodal), aim instead: Newton on the starting
+// azimuth and the arc until the direct formula lands on b, from 36 azimuths x an arc just
+// short of and just past half the Earth, keeping the shortest landing. The sphere it replaced
+// was within 0.5% on distance but chose the wrong compass word for 6,183 of the 7,756 town
+// pairs that reach here (median 23° off, Da Nang to Arequipa "southwest" for south-southwest);
+// this agrees with GeographicLib on all 7,756 and on 18,152 random near-antipodes (2026-11-23).
+// Two mirror-image geodesics tie when the latitudes are exactly opposite; either is right.
+const wrapPi = (x) => x - 2 * Math.PI * Math.round(x / (2 * Math.PI));
+function antipodal(a, b) {
+  const U1 = Math.atan((1 - F) * Math.tan(a.lat * RAD)), p2 = b.lat * RAD, L = (b.lon - a.lon) * RAD;
+  const miss = (x, y) => { const d = direct(U1, x, y); return [d.lat - p2, wrapPi(d.lon - L), d.m]; };
+  let best = null;
+  for (let k = 0; k < 72; k++) {
+    let x = ((k >> 1) + 0.5) * 10 * RAD, y = Math.PI + (k & 1 ? 0.01 : -0.01);
+    for (let it = 0; it < 40; it++) {
+      const [f, g, m] = miss(x, y), h = 1e-7;
+      if (Math.abs(f) < 1e-13 && Math.abs(g) < 1e-13) { if (!best || m < best.m - 1e-6) best = { m, x }; break; }
+      const [fx, gx] = miss(x + h, y), [fy, gy] = miss(x, y + h);
+      const j11 = (fx - f) / h, j12 = (fy - f) / h, j21 = (gx - g) / h, j22 = (gy - g) / h, det = j11 * j22 - j12 * j21;
+      if (!det) break;
+      x -= (f * j22 - g * j12) / det; y -= (g * j11 - f * j21) / det;
+      if (!(y > 0 && y < 1.5 * Math.PI)) break;
+    }
+  }
+  return best && { km: best.m / 1000, bearing: (((best.x * DEG) % 360) + 360) % 360, exact: true, aimed: true };
 }
 
 // Points along the great circle, as [lon, lat], from a to b.

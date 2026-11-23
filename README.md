@@ -19,8 +19,11 @@ has not, so London is 7 hours ahead of California instead of 8.
 - **Distance and starting direction:** Vincenty's formula on the WGS84 ellipsoid, the
   Earth's shape as GPS uses it. `test/facts.json` holds
   [GeographicLib](https://geographiclib.sourceforge.io/)'s answers for twelve town pairs,
-  and the page agrees with all of them to within 5 cm. For a few nearly antipodal points
-  Vincenty does not converge; there the page uses a sphere, which is within 0.5%, and says so.
+  and the page agrees with all of them to within 5 cm. For nearly antipodal points
+  Vincenty does not converge; there the page aims Vincenty's direct formula until it lands on
+  the other town, and keeps the shortest landing. On all 7,756 such town pairs it agrees with
+  GeographicLib to a tenth of a millimetre and on the heading. The sphere used before was
+  within 0.5% on distance but printed the wrong compass point for 6,183 of them.
 - **Route and halfway point:** the great circle on a sphere. At map scale the ellipsoid
   makes no visible difference.
 - **Flight time:** fitted to the median scheduled time of every US domestic route in BTS's August 2025 data (5,955 routes): 45 min, 820 km/h (900 past 4,000 km), and the westerlies between 25° and 60° make eastbound quicker. Median miss 5 min; off by 30+ on 0.5% of routes (the old 850 km/h + 30 min rule: 18 min and 15%). Outside the US it is spot-checked only (LAX–Sydney, Singapore–Newark, New York–London, SFO–Tokyo).

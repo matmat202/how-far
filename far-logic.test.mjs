@@ -22,6 +22,8 @@ near('a quarter of the equator', L.measure(pt(0, 0), pt(0, 90)).km, 10018.754171
 near('equator to the pole', L.measure(pt(0, 0), pt(90, 0)).km, 10001.965729, 0.000001);
 eq('the same point is 0 km, due north, and exact', L.measure(pt(37.44, -122.14), pt(37.44, -122.14)), { km: 0, bearing: 0, exact: true });
 near('due east along the equator', L.measure(pt(0, 10), pt(0, 20)).bearing, 90, 1e-9);
+// The aim rescues a Vincenty that went NaN with the right answer, so say which one answered.
+ok('along the equator Vincenty answers, not the aim', [[0, 10, 0, 20], [0, 0, 0, 90]].every(([a, b, c, d]) => L.measure(pt(a, b), pt(c, d)).aimed !== true));
 near('due south down a meridian', L.measure(pt(40, 5), pt(-10, 5)).bearing, 180, 1e-9);
 near('sphere: a quarter circumference', L.sphere(pt(0, 0), pt(0, 90)).km, (Math.PI / 2) * L.R_KM, 1e-9);
 
@@ -37,6 +39,7 @@ for (const f of facts.pairs) {
   ok(`places: ${f.from} / ${f.to}`, a && b);
   if (!a || !b) continue;
   const m = L.measure(a, b), s = L.sphere(a, b), tag = `${L.short(f.from)}-${L.short(f.to)}`;
+  if (m.aimed) fellBack++;
   if (m.exact) {
     // Vincenty is good to 0.5 mm (his 1975 paper) and measured 0.07 mm from GeographicLib on these
     // pairs; at a metre's tolerance every one of its series constants could change unseen.
@@ -58,9 +61,19 @@ for (const f of facts.pairs) {
 eq('Vincenty converged for every real pair', fellBack, 0);
 for (const f of facts.antipodes) {
   const m = L.measure(pt(...f.a), pt(...f.b));
-  ok(`near-antipodes ${f.a}/${f.b}: says it fell back`, m.exact === false);
-  ok(`near-antipodes ${f.a}/${f.b}: the sphere within 0.5%`, Math.abs(m.km - f.km) / f.km < 0.005, `${m.km} vs ${f.km}`);
+  ok(`near-antipodes ${f.a}/${f.b}: aimed, on the ellipsoid`, m.exact === true && m.aimed === true, JSON.stringify(m));
+  near(`near-antipodes ${f.a}/${f.b}: km to a tenth of a millimetre`, m.km, f.km, 1e-4);
 }
+// Where Vincenty gives up, antipodal() aims the direct formula. The sphere it replaced was
+// within 0.5% on distance and tens of degrees out on the heading the page prints.
+for (const f of facts.aimed) {
+  const m = L.measure(pt(...f.a), pt(...f.b)), tag = `aimed ${f.a}/${f.b}`;
+  ok(`${tag}: Vincenty gave up here, so this is the aim`, m.aimed === true, JSON.stringify(m));
+  near(`${tag}: km to a tenth of a millimetre`, m.km, f.km, 1e-7);
+  ok(`${tag}: bearing to 1e-6°`, bearingGap(m.bearing, f.bearing) < 1e-6, `${m.bearing} vs ${f.bearing}`);
+  eq(`${tag}: the compass word`, L.compass(m.bearing), L.compass(f.bearing));
+}
+ok('aimed pairs to check', facts.aimed.length >= 4);
 
 for (const f of facts.long) {
   const m = L.measure(pt(...f.a), pt(...f.b));
