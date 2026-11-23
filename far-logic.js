@@ -152,6 +152,36 @@ export function mapFrame(pts) {
   return { c, pts: c ? pts.map(([x, y]) => [wrapLon(x, c), y]) : pts };
 }
 
+// The map's zoom. On a phone the whole world is ~310 px wide, so Paris to Berlin (13° of
+// longitude) was one dot. The view is the route's box with a quarter of its size spare on each
+// side, at least 16° x 8°, widened to the map's 2:1 so the card's height never changes, and
+// kept between the poles. A box that would be wider than half the Earth shows the whole map
+// instead: by then zooming in buys little and loses where in the world it is. pts are
+// mapFrame's, already moved into [c - 180, c + 180]; y in the result is -lat, as drawn.
+export const MIN_VIEW = 16, MAX_VIEW = 180;
+export function mapView(pts, c) {
+  let lo = Infinity, hi = -Infinity, s = Infinity, n = -Infinity;
+  for (const [x, y] of pts) { lo = Math.min(lo, x); hi = Math.max(hi, x); s = Math.min(s, y); n = Math.max(n, y); }
+  let w = Math.max((hi - lo) * 1.5, MIN_VIEW), h = Math.max((n - s) * 1.5, MIN_VIEW / 2);
+  if (w < 2 * h) w = 2 * h; else h = w / 2;
+  if (w > MAX_VIEW) return { x: c - 180, y: -90, w: 360, h: 180, zoom: 1 };
+  const y = Math.min(Math.max(-(s + n) / 2 - h / 2, -90), 90 - h);
+  return { x: (lo + hi) / 2 - w / 2, y, w, h, zoom: 360 / w };
+}
+
+// Where a town's name goes on the map. A zoomed map of inland Europe is all land, so the two
+// names are what say where it is. The northern town's name sits above its dot and the other's
+// below, so an east-west pair never stacks them; each is centred on its dot, then pushed in
+// until it fits the view. p and other are [x, lat] as drawn; u is view units per CSS pixel;
+// chars the name's length. Returns the centre-x, baseline-y and font size, in view units.
+export function nameSpot(p, other, v, u, chars) {
+  const fs = 12 * u, half = 0.31 * fs * chars + 3 * u, gap = 6 * u;
+  const above = p[1] > other[1] || (p[1] === other[1] && p[0] < other[0]);
+  const y = above ? -p[1] - gap : -p[1] + gap + 0.8 * fs;
+  return { x: Math.min(Math.max(p[0], v.x + half), v.x + v.w - half),
+    y: Math.min(Math.max(y, v.y + fs), v.y + v.h - 0.3 * fs), fs };
+}
+
 // The halfway point along the great circle.
 export function midpoint(a, b) {
   const pts = route(a, b, 2);

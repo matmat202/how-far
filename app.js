@@ -33,26 +33,32 @@ function clocks() {
 }
 
 function drawMap(a, b) {
-  const { c, pts } = L.mapFrame(L.route(a, b)), x0 = c - 180;
+  const { c, pts } = L.mapFrame(L.route(a, b)), v = L.mapView(pts, c), k = v.w / 360;
   const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', `${x0} -90 360 180`);
+  svg.setAttribute('viewBox', [v.x, v.y, v.w, v.h].map((n) => +n.toFixed(3)).join(' '));
   svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', `World map${c ? `, centred on ${Math.abs(c)}° ${c < 0 ? 'W' : 'E'}` : ''}: the shortest route from ${a.label} to ${b.label}`);
+  svg.setAttribute('aria-label', `${v.zoom > 1 ? 'Map of the area around the route' : 'World map'}${c ? `, centred on ${Math.abs(c)}° ${c < 0 ? 'W' : 'E'}` : ''}: the shortest route from ${a.label} to ${b.label}`);
   const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); svg.append(e); return e; };
-  el('rect', { class: 'sea', x: x0, y: -90, width: 360, height: 180 });
+  el('rect', { class: 'sea', x: v.x, y: v.y, width: v.w, height: v.h });
+  const step = v.w > 120 ? 30 : v.w > 40 ? 10 : 5;
   let g = '';
-  for (let x = Math.ceil((x0 + 1) / 30) * 30; x < x0 + 360; x += 30) g += `M${x} -90V90`;
-  for (let y = -60; y <= 60; y += 30) g += `M${x0} ${y}H${x0 + 360}`;
+  for (let x = Math.floor(v.x / step + 1) * step; x < v.x + v.w; x += step) g += `M${x} ${v.y}v${v.h}`;
+  for (let y = Math.floor(v.y / step + 1) * step; y < v.y + v.h; y += step) if (Math.abs(y) < 90) g += `M${v.x} ${y}h${v.w}`;
   el('path', { class: 'grat', d: g });
   // Natural Earth's land is cut at ±180, so copies a world to either side tile a shifted window.
-  for (const dx of c ? [-360, 0, 360] : [0]) el('path', { class: 'land', d: LAND, ...(dx && { transform: `translate(${dx} 0)` }) });
+  for (const dx of [-360, 0, 360]) if (dx - 180 < v.x + v.w && dx + 180 > v.x) el('path', { class: 'land', d: LAND, ...(dx && { transform: `translate(${dx} 0)` }) });
   const path = (parts) => parts.map((pts) => pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(2)} ${(-y).toFixed(2)}`).join('')).join('');
   const at = (p) => [L.wrapLon(p.lon, c), p.lat];
   el('path', { class: 'straight', d: path([[at(a), at(b)]]) });
   el('path', { class: 'route', d: path([pts]) });
   const m = L.midpoint(a, b);
-  el('circle', { class: 'mid', cx: L.wrapLon(m.lon, c), cy: -m.lat, r: 2.2 });
-  for (const p of [a, b]) el('circle', { class: 'end', cx: L.wrapLon(p.lon, c), cy: -p.lat, r: 2.6 });
+  el('circle', { class: 'mid', cx: L.wrapLon(m.lon, c), cy: -m.lat, r: 2.2 * k });
+  for (const p of [a, b]) el('circle', { class: 'end', cx: L.wrapLon(p.lon, c), cy: -p.lat, r: 2.6 * k });
+  const u = v.w / ($('map').clientWidth || 600);
+  for (const [p, o] of a.label === b.label ? [[a, a]] : [[a, b], [b, a]]) {
+    const name = p.label.split(',')[0], s = L.nameSpot(at(p), at(o), v, u, name.length);
+    el('text', { class: 'name', x: s.x, y: s.y, 'font-size': s.fs, 'stroke-width': 3 * u, 'text-anchor': 'middle' }).textContent = name;
+  }
   $('map').replaceChildren(svg);
   return m;
 }

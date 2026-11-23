@@ -131,6 +131,63 @@ if (shipped) {
   ok(`map frame: ${n} pairs, ${moved} re-centred, every route whole and inside`, !bad.length && moved > 0.05 * n, JSON.stringify(bad.slice(0, 3)));
 }
 
+// --- the map's zoom: a short route fills the map ----------------------------------------
+// Before 2026-11-23 every route was drawn on the whole world, so on a phone Paris to Berlin
+// was one dot. mapView() is the route's box, a quarter spare each side, 2:1, at least 16° wide.
+const view = (a, b) => { const f = L.mapFrame(L.route(a, b)); return { ...L.mapView(f.pts, f.c), pts: f.pts, c: f.c }; };
+const par = pt(48.85, 2.35), ber = pt(52.52, 13.40), hnl = pt(21.31, -157.86), ogg = pt(20.89, -156.47);
+// The route must sit inside the box with room to spare: at least a sixth of the box's width
+// (and height) from each edge, which the quarter-each-side padding gives exactly on the long axis.
+const roomy = (v) => v.pts.every(([x, y]) => x - v.x >= v.w / 6 - 1e-9 && v.x + v.w - x >= v.w / 6 - 1e-9
+  && -y - v.y >= 0 && v.y + v.h + y >= 0);
+const vPB = view(par, ber);
+eq('Paris to Berlin: 16.6° x 8.3° around the route (lon span x 1.5, 2:1)', [vPB.w, vPB.h].map((n) => +n.toFixed(2)), [16.58, 8.29]);
+ok('Paris to Berlin: zoomed about 22x, centred on the route', vPB.zoom > 20 && Math.abs(vPB.x + vPB.w / 2 - (2.35 + 13.40) / 2) < 1e-9, vPB);
+ok('Paris to Berlin: the route has a sixth of the map spare each side', roomy(vPB));
+const vHO = view(hnl, ogg);
+eq('Honolulu to Kahului (151 km): the 16° x 8° floor', [vHO.w, vHO.h], [16, 8]);
+ok('Honolulu to Kahului: centred on the hop', Math.abs(vHO.x + 8 - (-157.86 - 156.47) / 2) < 1e-9 && Math.abs(vHO.y + 4 + (21.31 + 20.89) / 2) < 1e-9, vHO);
+const vNS = view(pt(59.33, 18.07), pt(37.98, 23.73));
+ok('Stockholm to Athens (north-south): the height sets the box, width is twice it', Math.abs(vNS.h - 21.35 * 1.5) < 1e-6 && vNS.w === 2 * vNS.h, vNS);
+eq('London to Sydney: the whole world', [view(lon, syd).x, view(lon, syd).w, view(lon, syd).zoom], [-180, 360, 1]);
+const vPT = view(pao, tyo);
+ok('Palo Alto to Tokyo: zoomed on the Pacific-centred frame', vPT.zoom > 1 && vPT.c !== 0 && vPT.x < -180 && roomy(vPT), vPT);
+const vSv = view(pt(82.50, -62.35), pt(78.22, 15.65));
+ok('Alert to Longyearbyen: the box is pushed down to stop at the North Pole', vSv.zoom > 1 && vSv.y === -90 && vSv.y + vSv.h > -78.22, JSON.stringify(vSv));
+const vAnt = view(pt(-77.85, 166.67), pt(-64.77, -64.05));
+ok('McMurdo to Palmer: a box that would pass the South Pole shows the world, or stays above it', vAnt.y + vAnt.h <= 90 && vAnt.y >= -90, vAnt);
+// Town names on the map: the northern one above its dot, the other below, both inside the view.
+const fit = (s, v, chars) => s.x - 0.31 * s.fs * chars >= v.x - 1e-9 && s.x + 0.31 * s.fs * chars <= v.x + v.w + 1e-9 && s.y - s.fs >= v.y - 1e-9 && s.y <= v.y + v.h + 1e-9;
+{
+  const u = vPB.w / 312, P0 = [2.35, 48.85], B0 = [13.40, 52.52];
+  const sP = L.nameSpot(P0, B0, vPB, u, 5), sB = L.nameSpot(B0, P0, vPB, u, 6);
+  ok('Paris to Berlin: Berlin (north) is named above its dot, Paris below', sB.y < -52.52 && sP.y > -48.85 + 0.8 * sP.fs, [sB.y, sP.y]);
+  ok('Paris to Berlin: each name centred on its dot, 12 px tall', sP.x === 2.35 && sB.x === 13.40 && Math.abs(sP.fs / u - 12) < 1e-9, [sP.x, sB.x]);
+  const sL = L.nameSpot([vPB.x + 0.1, 50], [13.40, 52.52], vPB, u, 18);
+  ok('a long name at the edge is pushed in until it fits', sL.x > vPB.x + 0.1 && fit(sL, vPB, 18), sL);
+  const e1 = L.nameSpot([4, 50], [9, 50], vPB, u, 4), e2 = L.nameSpot([9, 50], [4, 50], vPB, u, 4);
+  ok('two towns on one latitude: one name above, one below', (e1.y < -50) !== (e2.y < -50), [e1.y, e2.y]);
+  const top = L.nameSpot([0, 89.9], [0, 80], { x: -180, y: -90, w: 360, h: 180 }, 360 / 312, 4);
+  ok('a name above a town by the pole stays on the map', top.y - top.fs >= -90 - 1e-9, top);
+  const bot = L.nameSpot([0, -89.9], [0, 80], { x: -180, y: -90, w: 360, h: 180 }, 360 / 312, 4);
+  ok('a name below a town by the South Pole stays on the map', bot.y <= 90 - 0.3 * bot.fs + 1e-9, bot);
+}
+if (shipped) {
+  const P = shipped.places;
+  let n = 0, zoomed = 0, bad = [];
+  for (let i = 0; i < P.length; i += 211) for (let j = i % 89; j < P.length; j += 89) {
+    const a = pt(P[i][3], P[i][4]), b = pt(P[j][3], P[j][4]), f = L.mapFrame(L.route(a, b, 32)), v = L.mapView(f.pts, f.c);
+    n++; if (v.zoom > 1) zoomed++;
+    const pa = [f.pts[0][0], a.lat], pb = [f.pts.at(-1)[0], b.lat], u = v.w / 312;
+    const na = L.nameSpot(pa, pb, v, u, 12), nb = L.nameSpot(pb, pa, v, u, 12);
+    if (!fit(na, v, 12) || !fit(nb, v, 12) || (a.lat !== b.lat && (na.y < nb.y) !== (a.lat > b.lat))) bad.push(['name', P[i][0], P[j][0]]);
+    const box = v.pts = f.pts, inside = box.every(([x, y]) => x >= v.x && x <= v.x + v.w && -y >= v.y && -y <= v.y + v.h);
+    if (!inside || Math.abs(v.w - 2 * v.h) > 1e-9 || v.y < -90 || v.y + v.h > 90 || v.w < 16 || (v.zoom > 1 && v.w > 180)
+      || (v.zoom > 1 && !roomy(v)) || (v.zoom === 1 && (v.x !== f.c - 180 || v.w !== 360))) bad.push([P[i][0], P[j][0], v]);
+  }
+  ok(`map zoom: ${n} pairs, ${zoomed} zoomed, every route inside a 2:1 box between the poles, both names on it`, !bad.length && zoomed > 0.1 * n && zoomed < 0.9 * n, JSON.stringify(bad.slice(0, 2)));
+}
+
 // --- nearest ----------------------------------------------------------------------------
 const tiny = [['A', '', 'X', 10, 10, 5, 0], ['B', '', 'X', 10.5, 10, 5, 0], ['C', '', 'X', -40, 0, 5, 0]];
 eq('nearest picks the closest, not the first', L.nearest(tiny, pt(10.4, 10)).p[0], 'B');
