@@ -33,23 +33,26 @@ function clocks() {
 }
 
 function drawMap(a, b) {
+  const { c, pts } = L.mapFrame(L.route(a, b)), x0 = c - 180;
   const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', '-180 -90 360 180');
+  svg.setAttribute('viewBox', `${x0} -90 360 180`);
   svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', `World map: the shortest route from ${a.label} to ${b.label}`);
+  svg.setAttribute('aria-label', `World map${c ? `, centred on ${Math.abs(c)}° ${c < 0 ? 'W' : 'E'}` : ''}: the shortest route from ${a.label} to ${b.label}`);
   const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); svg.append(e); return e; };
-  el('rect', { class: 'sea', x: -180, y: -90, width: 360, height: 180 });
+  el('rect', { class: 'sea', x: x0, y: -90, width: 360, height: 180 });
   let g = '';
-  for (let x = -150; x < 180; x += 30) g += `M${x} -90V90`;
-  for (let y = -60; y <= 60; y += 30) g += `M-180 ${y}H180`;
+  for (let x = Math.ceil((x0 + 1) / 30) * 30; x < x0 + 360; x += 30) g += `M${x} -90V90`;
+  for (let y = -60; y <= 60; y += 30) g += `M${x0} ${y}H${x0 + 360}`;
   el('path', { class: 'grat', d: g });
-  el('path', { class: 'land', d: LAND });
+  // Natural Earth's land is cut at ±180, so copies a world to either side tile a shifted window.
+  for (const dx of c ? [-360, 0, 360] : [0]) el('path', { class: 'land', d: LAND, ...(dx && { transform: `translate(${dx} 0)` }) });
   const path = (parts) => parts.map((pts) => pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(2)} ${(-y).toFixed(2)}`).join('')).join('');
-  el('path', { class: 'straight', d: path(L.splitAtDateLine([[a.lon, a.lat], [b.lon, b.lat]])) });
-  el('path', { class: 'route', d: path(L.splitAtDateLine(L.route(a, b))) });
+  const at = (p) => [L.wrapLon(p.lon, c), p.lat];
+  el('path', { class: 'straight', d: path([[at(a), at(b)]]) });
+  el('path', { class: 'route', d: path([pts]) });
   const m = L.midpoint(a, b);
-  el('circle', { class: 'mid', cx: m.lon, cy: -m.lat, r: 2.2 });
-  for (const p of [a, b]) el('circle', { class: 'end', cx: p.lon, cy: -p.lat, r: 2.6 });
+  el('circle', { class: 'mid', cx: L.wrapLon(m.lon, c), cy: -m.lat, r: 2.2 });
+  for (const p of [a, b]) el('circle', { class: 'end', cx: L.wrapLon(p.lon, c), cy: -p.lat, r: 2.6 });
   $('map').replaceChildren(svg);
   return m;
 }

@@ -85,6 +85,27 @@ export function splitAtDateLine(pts) {
   return parts;
 }
 
+// The map's window. A route that stays off the 180th meridian keeps the familiar map centred
+// on Greenwich (c = 0). One that would cross it (Palo Alto to Tokyo, Sydney to Santiago) is
+// drawn on a map centred on its own middle longitude instead, so it is one unbroken line, not
+// two stubs at the edges. A great circle shorter than half the Earth spans under 180° of
+// longitude, so every point lands within 90° of c. Returns c and each [lon, lat] moved into
+// [c - 180, c + 180]; the page repeats the land either side to fill a shifted window.
+export const wrapLon = (lon, c) => lon - 360 * Math.floor((lon - c + 180) / 360);
+export function mapFrame(pts) {
+  let c = 0;
+  if (splitAtDateLine(pts).length > 1) {
+    let x = pts[0][0], lo = x, hi = x;
+    for (let i = 1; i < pts.length; i++) {
+      let d = pts[i][0] - pts[i - 1][0];
+      if (d > 180) d -= 360; else if (d < -180) d += 360;
+      x += d; lo = Math.min(lo, x); hi = Math.max(hi, x);
+    }
+    c = wrapLon(Math.round((lo + hi) / 2), 0);
+  }
+  return { c, pts: c ? pts.map(([x, y]) => [wrapLon(x, c), y]) : pts };
+}
+
 // The halfway point along the great circle.
 export function midpoint(a, b) {
   const pts = route(a, b, 2);

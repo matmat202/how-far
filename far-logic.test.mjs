@@ -88,6 +88,36 @@ eq('London to New York does not', L.splitAtDateLine(L.route(lon, nyc)).length, 1
 const eastward = L.splitAtDateLine(L.route(tyo, anc));
 ok('eastward crossing closes at +180 first', eastward[0].at(-1)[0] === 180 && eastward[1][0][0] === -180);
 
+// --- the map's window: a route across the 180th meridian is drawn whole --------------------
+// Before 2026-11-22 the map was always centred on Greenwich, so Palo Alto to Tokyo was two
+// stubs at its edges. mapFrame() centres such a route on its own middle longitude.
+const syd = pt(-33.87, 151.21), scl = pt(-33.45, -70.67), pao = pt(37.44, -122.14);
+const jump = (ps) => Math.max(0, ...ps.slice(1).map(([x], i) => Math.abs(x - ps[i][0])));
+const fNY = L.mapFrame(L.route(nyc, tyo));
+ok('New York to Tokyo: the map centres over the North Pacific', fNY.c > -160 && fNY.c < -130, fNY.c);
+ok('New York to Tokyo: drawn as one unbroken line', jump(fNY.pts) < 10, jump(fNY.pts));
+eq('London to New York keeps the Greenwich map', L.mapFrame(L.route(lon, nyc)).c, 0);
+eq('London to New York: its points are untouched', L.mapFrame(L.route(lon, nyc)).pts, L.route(lon, nyc));
+const fSS = L.mapFrame(L.route(syd, scl));
+ok('Sydney to Santiago: centred in the South Pacific and unbroken', fSS.c === -140 && jump(fSS.pts) < 10, [fSS.c, jump(fSS.pts)]);
+ok('either direction gives the same centre', L.mapFrame(L.route(tyo, pao)).c === L.mapFrame(L.route(pao, tyo)).c);
+eq('wrapLon: into [c-180, c+180)', [L.wrapLon(139.69, -150), L.wrapLon(-122, 160), L.wrapLon(10, 0), L.wrapLon(180, 0), L.wrapLon(-200, 0)], [-220.31, 238, 10, -180, 160]);
+// Every shipped town against every 97th: the frame holds the whole route, unbroken, with
+// both towns at its ends, and moves off Greenwich exactly when the old map split the line.
+if (shipped) {
+  const P = shipped.places, step = 97;
+  let n = 0, moved = 0, bad = [];
+  for (let i = 0; i < P.length; i += 211) for (let j = i % step; j < P.length; j += step) {
+    const a = pt(P[i][3], P[i][4]), b = pt(P[j][3], P[j][4]), r = L.route(a, b, 32), f = L.mapFrame(r);
+    const split = L.splitAtDateLine(r).length > 1;
+    n++; if (f.c) moved++;
+    const inside = f.pts.every(([x]) => x >= f.c - 180 && x < f.c + 180);
+    if (!inside || jump(f.pts) >= 180 || (f.c !== 0) !== split
+      || Math.abs(f.pts[0][0] - L.wrapLon(a.lon, f.c)) > 1e-9 || Math.abs(f.pts.at(-1)[0] - L.wrapLon(b.lon, f.c)) > 1e-9) bad.push([P[i][0], P[j][0], f.c]);
+  }
+  ok(`map frame: ${n} pairs, ${moved} re-centred, every route whole and inside`, !bad.length && moved > 0.05 * n, JSON.stringify(bad.slice(0, 3)));
+}
+
 // --- nearest ----------------------------------------------------------------------------
 const tiny = [['A', '', 'X', 10, 10, 5, 0], ['B', '', 'X', 10.5, 10, 5, 0], ['C', '', 'X', -40, 0, 5, 0]];
 eq('nearest picks the closest, not the first', L.nearest(tiny, pt(10.4, 10)).p[0], 'B');
